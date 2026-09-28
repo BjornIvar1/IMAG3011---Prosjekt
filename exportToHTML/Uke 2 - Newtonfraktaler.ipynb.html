@@ -1,0 +1,1211 @@
+<html>
+<head>
+<title>Uke 2 - Newtonfraktaler.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #bcbec4;}
+.s1 { color: #cf8e6d;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #6aab73;}
+.s5 { color: #2aacb8;}
+.s6 { color: #7a7e85;}
+.ls0 { height: 1px; border-width: 0; color: #43454a; background-color:#43454a}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Uke 2 - Newtonfraktaler.ipynb</font>
+</center></td></tr></table>
+<pre><span class="s0">#%% md 
+&lt;h1&gt;&lt;center&gt;Uke 2 – Newtonfraktaler&lt;/center&gt;&lt;/h1&gt; 
+ 
+&lt;h3&gt;&lt;center&gt;IMAG3011 – Matematikk for ingeniørfag 3A&lt;/h3&gt; 
+ 
+&lt;p&gt;&lt;center&gt;&lt;strong&gt;Bjørn Ivar Thorsen Høie&lt;/strong&gt;&lt;/center&gt;&lt;/p&gt; 
+ 
+&lt;p&gt;&lt;center&gt;NTNU Gjøvik&lt;/center&gt;&lt;/p&gt; 
+ 
+&lt;p&gt;&lt;center&gt;September 2026&lt;/center&gt;&lt;/p&gt; 
+ 
+&lt;br&gt; 
+ 
+**Problemstilling:** Hva kjennetegner gode og dårlige startverdier for Newtons metode, og hvordan kan vi undersøke dette numerisk? 
+ <hr class="ls0">#%% md 
+## Oppgave 1 
+ 
+_**Merknad:** Jeg vil gjøre leseren oppmersom på at jeg fikk samme funksjons-ID og funksjon som eksempelnavnet &quot;Ada&quot;. Dette ser ut til å skyldes at programmet ikke behandlet fornavnet mitt &quot;Bjørn&quot; riktig, dette tror jeg skyldes at fornavnet mitt inneholder bokstaven &quot;ø&quot;. Jeg oppdaget dette først når jeg begynnte å skrive rapporten, og oppgavene er allerede løst._ 
+ <hr class="ls0">#%% 
+</span><span class="s1">import </span><span class="s0">hashlib</span>
+<span class="s1">import </span><span class="s0">unicodedata</span>
+
+<span class="s1">import </span><span class="s0">numpy </span><span class="s1">as </span><span class="s0">np</span>
+<span class="s1">import </span><span class="s0">matplotlib</span><span class="s2">.</span><span class="s0">pyplot </span><span class="s1">as </span><span class="s0">plt</span>
+<span class="s1">from </span><span class="s0">matplotlib</span><span class="s2">.</span><span class="s0">patches </span><span class="s1">import </span><span class="s0">Patch</span>
+
+
+<span class="s1">def </span><span class="s0">normalize_name</span><span class="s2">(</span><span class="s0">name</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Gjør små navnevariasjoner irrelevante for funksjonstildelingen.&quot;&quot;&quot;</span>
+    <span class="s0">name </span><span class="s2">= </span><span class="s0">unicodedata</span><span class="s2">.</span><span class="s0">normalize</span><span class="s2">(</span><span class="s4">&quot;NFKD&quot;</span><span class="s2">, </span><span class="s0">name</span><span class="s2">.</span><span class="s0">strip</span><span class="s2">().</span><span class="s0">casefold</span><span class="s2">())</span>
+    <span class="s0">name </span><span class="s2">= </span><span class="s4">&quot;&quot;</span><span class="s2">.</span><span class="s0">join</span><span class="s2">(</span><span class="s0">char </span><span class="s1">for </span><span class="s0">char </span><span class="s1">in </span><span class="s0">name</span>
+                   <span class="s1">if not </span><span class="s0">unicodedata</span><span class="s2">.</span><span class="s0">combining</span><span class="s2">(</span><span class="s0">char</span><span class="s2">))</span>
+    <span class="s1">return </span><span class="s4">&quot; &quot;</span><span class="s2">.</span><span class="s0">join</span><span class="s2">(</span><span class="s0">name</span><span class="s2">.</span><span class="s0">split</span><span class="s2">())</span>
+
+
+<span class="s1">def </span><span class="s0">function_id</span><span class="s2">(</span><span class="s0">first_name</span><span class="s2">, </span><span class="s0">number_of_functions</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Gjør fornavnet om til en stabil indeks i funksjonspuljen.&quot;&quot;&quot;</span>
+    <span class="s0">normalized </span><span class="s2">= </span><span class="s0">normalize_name</span><span class="s2">(</span><span class="s0">first_name</span><span class="s2">)</span>
+    <span class="s0">text </span><span class="s2">= </span><span class="s4">f&quot;IMAX3011-newton-2026:</span><span class="s1">{</span><span class="s0">normalized</span><span class="s1">}</span><span class="s4">&quot;</span>
+    <span class="s0">digest </span><span class="s2">= </span><span class="s0">hashlib</span><span class="s2">.</span><span class="s0">sha256</span><span class="s2">(</span><span class="s0">text</span><span class="s2">.</span><span class="s0">encode</span><span class="s2">(</span><span class="s4">&quot;utf-8&quot;</span><span class="s2">)).</span><span class="s0">digest</span><span class="s2">()</span>
+    <span class="s1">return </span><span class="s0">int</span><span class="s2">.</span><span class="s0">from_bytes</span><span class="s2">(</span><span class="s0">digest</span><span class="s2">[:</span><span class="s5">8</span><span class="s2">], </span><span class="s0">byteorder</span><span class="s2">=</span><span class="s4">&quot;big&quot;</span><span class="s2">) % </span><span class="s0">number_of_functions</span>
+
+
+<span class="s0">FUNCTIONS </span><span class="s2">= [</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;A&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;z³ − 1&quot;</span><span class="s2">, </span><span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">, -</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;B&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, -</span><span class="s5">2j</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">, </span><span class="s5">2j</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;(z − 1)(z + 1)(z − 2i)&quot;</span><span class="s2">,</span>
+     <span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">, -</span><span class="s5">2</span><span class="s2">, </span><span class="s5">3</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;C&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">2</span><span class="s2">, -</span><span class="s5">4</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;(z − 2)(z + 1 − i)(z + 1 + i)&quot;</span><span class="s2">,</span>
+     <span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">3</span><span class="s2">, </span><span class="s5">3</span><span class="s2">, -</span><span class="s5">3</span><span class="s2">, </span><span class="s5">3</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;D&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;z⁴ − 1&quot;</span><span class="s2">, </span><span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">, -</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;E&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">3.75</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;(z − 2)(z + 2)(z − 0.5i)(z + 0.5i)&quot;</span><span class="s2">,</span>
+     <span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">3</span><span class="s2">, </span><span class="s5">3</span><span class="s2">, -</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;F&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">1</span><span class="s2">, </span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;z⁴ + z + 1&quot;</span><span class="s2">, </span><span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">, -</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;G&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;z⁵ − 1&quot;</span><span class="s2">, </span><span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">, -</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;H&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, -</span><span class="s5">1.5</span><span class="s2">, -</span><span class="s5">0.5</span><span class="s2">, -</span><span class="s5">0.5</span><span class="s2">, -</span><span class="s5">1.5</span><span class="s2">, </span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;(z − 2)(z + 1)(z − 0.5)(z − i)(z + i)&quot;</span><span class="s2">,</span>
+     <span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">, -</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">)},</span>
+    <span class="s2">{</span><span class="s4">&quot;label&quot;</span><span class="s2">: </span><span class="s4">&quot;I&quot;</span><span class="s2">, </span><span class="s4">&quot;coefficients&quot;</span><span class="s2">: [</span><span class="s5">1</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">, </span><span class="s5">1</span><span class="s2">],</span>
+     <span class="s4">&quot;formula&quot;</span><span class="s2">: </span><span class="s4">&quot;z⁵ − z + 1&quot;</span><span class="s2">, </span><span class="s4">&quot;plot_window&quot;</span><span class="s2">: (-</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">, -</span><span class="s5">2.5</span><span class="s2">, </span><span class="s5">2.5</span><span class="s2">)},</span>
+<span class="s2">]</span>
+
+
+<span class="s1">def </span><span class="s0">prepare_function</span><span class="s2">(</span><span class="s0">entry</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Lag f, f', nullpunkter og kritiske punkter fra én tabellrad. 
+ 
+    Denne funksjonen gjør oppsettet for oss. I forsøkene nedenfor arbeider vi 
+    med f og df, og trenger vanligvis ikke å endre selve funksjonen her. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">coefficients </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">asarray</span><span class="s2">(</span><span class="s0">entry</span><span class="s2">[</span><span class="s4">&quot;coefficients&quot;</span><span class="s2">], </span><span class="s0">dtype</span><span class="s2">=</span><span class="s0">complex</span><span class="s2">)</span>
+    <span class="s0">derivative_coefficients </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">polyder</span><span class="s2">(</span><span class="s0">coefficients</span><span class="s2">)</span>
+    <span class="s0">roots </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">roots</span><span class="s2">(</span><span class="s0">coefficients</span><span class="s2">)</span>
+    <span class="s0">critical_points </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">roots</span><span class="s2">(</span><span class="s0">derivative_coefficients</span><span class="s2">)</span>
+
+    <span class="s1">def </span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">):</span>
+        <span class="s1">return </span><span class="s0">np</span><span class="s2">.</span><span class="s0">polyval</span><span class="s2">(</span><span class="s0">coefficients</span><span class="s2">, </span><span class="s0">z</span><span class="s2">)</span>
+
+    <span class="s1">def </span><span class="s0">df</span><span class="s2">(</span><span class="s0">z</span><span class="s2">):</span>
+        <span class="s1">return </span><span class="s0">np</span><span class="s2">.</span><span class="s0">polyval</span><span class="s2">(</span><span class="s0">derivative_coefficients</span><span class="s2">, </span><span class="s0">z</span><span class="s2">)</span>
+
+    <span class="s1">return </span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">critical_points</span>
+
+
+<span class="s6"># Bytt teksten med ditt eget fornavn.</span>
+<span class="s0">first_name </span><span class="s2">= </span><span class="s4">&quot;Bjørn&quot;</span>
+
+<span class="s0">my_id </span><span class="s2">= </span><span class="s0">function_id</span><span class="s2">(</span><span class="s0">first_name</span><span class="s2">, </span><span class="s0">len</span><span class="s2">(</span><span class="s0">FUNCTIONS</span><span class="s2">))</span>
+<span class="s0">my_function </span><span class="s2">= </span><span class="s0">FUNCTIONS</span><span class="s2">[</span><span class="s0">my_id</span><span class="s2">]</span>
+<span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">critical_points </span><span class="s2">= </span><span class="s0">prepare_function</span><span class="s2">(</span><span class="s0">my_function</span><span class="s2">)</span>
+
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Funksjons-ID:&quot;</span><span class="s2">, </span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">&quot;label&quot;</span><span class="s2">])</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Funksjon:    &quot;</span><span class="s2">, </span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">&quot;formula&quot;</span><span class="s2">])</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Koeffisienter:&quot;</span><span class="s2">, </span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">&quot;coefficients&quot;</span><span class="s2">])</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Nullpunkter:&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">root </span><span class="s1">in </span><span class="s0">roots</span><span class="s2">:</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s0">root</span><span class="s2">)</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Kritiske punkter (f'(z)=0):&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">point </span><span class="s1">in </span><span class="s0">critical_points</span><span class="s2">:</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s0">point</span><span class="s2">)</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Standardvindu:&quot;</span><span class="s2">, </span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">&quot;plot_window&quot;</span><span class="s2">])</span><hr class="ls0"><span class="s0">#%% md 
+Funksjons ID-en, funksjonen, nullpunkter og standardvindu som er brukt gjennom prosjektet er: 
+ 
+**Funksjons-ID:** 
+$$ 
+F 
+$$ 
+ 
+**Funksjon:** 
+ 
+$$ 
+f(z)=z^4+z+1 
+$$ 
+ 
+**Nullpunkter:** 
+ 
+$$ 
+r_1 = 0.7271360844911963 + 0.9340992894605291i 
+$$ 
+ 
+$$ 
+r_2 = 0.7271360844911976 - 0.9340992894605301i 
+$$ 
+ 
+$$ 
+r_3 = -0.727136084491198 + 0.43001428832971644i 
+$$ 
+ 
+$$ 
+r_4 = -0.7271360844911973 - 0.4300142883297161i 
+$$ 
+ 
+**Standardvindu:** 
+ 
+$$ 
+(-2.5,\;2.5,\;-2.5,\;2.5) 
+$$ <hr class="ls0">#%% md 
+## Oppgave 2 
+ <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">is_finite_complex</span><span class="s2">(</span><span class="s0">z</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Sjekk at både real- og imaginærdelen kan brukes videre.&quot;&quot;&quot;</span>
+    <span class="s1">return </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">real</span><span class="s2">(</span><span class="s0">z</span><span class="s2">)) </span><span class="s1">and </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">(</span><span class="s0">z</span><span class="s2">))</span>
+
+
+<span class="s1">def </span><span class="s0">nearest_root</span><span class="s2">(</span><span class="s0">z</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Returner nummeret til nullpunktet som ligger nærmest z.&quot;&quot;&quot;</span>
+    <span class="s1">return </span><span class="s0">int</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">argmin</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">roots </span><span class="s2">- </span><span class="s0">z</span><span class="s2">)))</span>
+
+
+<span class="s1">def </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">,</span>
+                 <span class="s0">derivative_tol</span><span class="s2">=</span><span class="s5">1e-14</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Følg én startverdi slik at vi kan se hva Newton faktisk gjør. 
+ 
+    I forsøkene endrer du først og fremst z0, tol og maxiter. Resultatet er en 
+    ordbok med stoppårsak, funnet nullpunkt og hele iterasjonshistorikken. 
+    derivative_tol beskytter oss mot å dele på et tall som er svært nær null. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">z </span><span class="s2">= </span><span class="s0">complex</span><span class="s2">(</span><span class="s0">z0</span><span class="s2">)</span>
+    <span class="s0">history </span><span class="s2">= [{</span><span class="s4">&quot;n&quot;</span><span class="s2">: </span><span class="s5">0</span><span class="s2">, </span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">,</span>
+                <span class="s4">&quot;residual&quot;</span><span class="s2">: </span><span class="s0">float</span><span class="s2">(</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">))), </span><span class="s4">&quot;step&quot;</span><span class="s2">: </span><span class="s0">np</span><span class="s2">.</span><span class="s0">nan</span><span class="s2">}]</span>
+
+    <span class="s1">if </span><span class="s0">history</span><span class="s2">[-</span><span class="s5">1</span><span class="s2">][</span><span class="s4">&quot;residual&quot;</span><span class="s2">] &lt; </span><span class="s0">tol</span><span class="s2">:</span>
+        <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">, </span><span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s1">True</span><span class="s2">, </span><span class="s4">&quot;root&quot;</span><span class="s2">: </span><span class="s0">nearest_root</span><span class="s2">(</span><span class="s0">z</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">),</span>
+                <span class="s4">&quot;reason&quot;</span><span class="s2">: </span><span class="s4">&quot;liten residual&quot;</span><span class="s2">, </span><span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s5">0</span><span class="s2">,</span>
+                <span class="s4">&quot;history&quot;</span><span class="s2">: </span><span class="s0">history</span><span class="s2">}</span>
+
+    <span class="s1">for </span><span class="s0">n </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s5">1</span><span class="s2">, </span><span class="s0">maxiter </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">):</span>
+        <span class="s0">derivative </span><span class="s2">= </span><span class="s0">df</span><span class="s2">(</span><span class="s0">z</span><span class="s2">)</span>
+        <span class="s1">if not </span><span class="s0">is_finite_complex</span><span class="s2">(</span><span class="s0">derivative</span><span class="s2">) </span><span class="s1">or </span><span class="s0">abs</span><span class="s2">(</span><span class="s0">derivative</span><span class="s2">) &lt;= </span><span class="s0">derivative_tol</span><span class="s2">:</span>
+            <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">, </span><span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s1">False</span><span class="s2">, </span><span class="s4">&quot;root&quot;</span><span class="s2">: </span><span class="s1">None</span><span class="s2">,</span>
+                    <span class="s4">&quot;reason&quot;</span><span class="s2">: </span><span class="s4">&quot;for liten derivert&quot;</span><span class="s2">, </span><span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s0">n</span><span class="s2">-</span><span class="s5">1</span><span class="s2">,</span>
+                    <span class="s4">&quot;history&quot;</span><span class="s2">: </span><span class="s0">history</span><span class="s2">}</span>
+
+        <span class="s1">with </span><span class="s0">np</span><span class="s2">.</span><span class="s0">errstate</span><span class="s2">(</span><span class="s0">over</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">, </span><span class="s0">divide</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">, </span><span class="s0">invalid</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">):</span>
+            <span class="s0">z_new </span><span class="s2">= </span><span class="s0">z </span><span class="s2">- </span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">)/</span><span class="s0">derivative</span>
+
+        <span class="s1">if not </span><span class="s0">is_finite_complex</span><span class="s2">(</span><span class="s0">z_new</span><span class="s2">):</span>
+            <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z_new</span><span class="s2">, </span><span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s1">False</span><span class="s2">, </span><span class="s4">&quot;root&quot;</span><span class="s2">: </span><span class="s1">None</span><span class="s2">,</span>
+                    <span class="s4">&quot;reason&quot;</span><span class="s2">: </span><span class="s4">&quot;ikke-endelig verdi&quot;</span><span class="s2">, </span><span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s0">n</span><span class="s2">,</span>
+                    <span class="s4">&quot;history&quot;</span><span class="s2">: </span><span class="s0">history</span><span class="s2">}</span>
+
+        <span class="s0">step </span><span class="s2">= </span><span class="s0">float</span><span class="s2">(</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">z_new</span><span class="s2">-</span><span class="s0">z</span><span class="s2">))</span>
+        <span class="s0">residual </span><span class="s2">= </span><span class="s0">float</span><span class="s2">(</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">f</span><span class="s2">(</span><span class="s0">z_new</span><span class="s2">)))</span>
+        <span class="s0">history</span><span class="s2">.</span><span class="s0">append</span><span class="s2">({</span><span class="s4">&quot;n&quot;</span><span class="s2">: </span><span class="s0">n</span><span class="s2">, </span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z_new</span><span class="s2">,</span>
+                        <span class="s4">&quot;residual&quot;</span><span class="s2">: </span><span class="s0">residual</span><span class="s2">, </span><span class="s4">&quot;step&quot;</span><span class="s2">: </span><span class="s0">step</span><span class="s2">})</span>
+        <span class="s0">z </span><span class="s2">= </span><span class="s0">z_new</span>
+
+        <span class="s1">if </span><span class="s0">residual </span><span class="s2">&lt; </span><span class="s0">tol</span><span class="s2">:</span>
+            <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">, </span><span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s1">True</span><span class="s2">,</span>
+                    <span class="s4">&quot;root&quot;</span><span class="s2">: </span><span class="s0">nearest_root</span><span class="s2">(</span><span class="s0">z</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">),</span>
+                    <span class="s4">&quot;reason&quot;</span><span class="s2">: </span><span class="s4">&quot;liten residual&quot;</span><span class="s2">, </span><span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s0">n</span><span class="s2">,</span>
+                    <span class="s4">&quot;history&quot;</span><span class="s2">: </span><span class="s0">history</span><span class="s2">}</span>
+
+    <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">, </span><span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s1">False</span><span class="s2">, </span><span class="s4">&quot;root&quot;</span><span class="s2">: </span><span class="s1">None</span><span class="s2">,</span>
+            <span class="s4">&quot;reason&quot;</span><span class="s2">: </span><span class="s4">&quot;maksimalt antall iterasjoner&quot;</span><span class="s2">,</span>
+            <span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s0">maxiter</span><span class="s2">, </span><span class="s4">&quot;history&quot;</span><span class="s2">: </span><span class="s0">history</span><span class="s2">}</span>
+
+
+<span class="s1">def </span><span class="s0">print_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Skriv historikken fra newton_trace som en lesbar tabell.&quot;&quot;&quot;</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot; n                 z_n             |f(z_n)|       skrittlengde&quot;</span><span class="s2">)</span>
+    <span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;history&quot;</span><span class="s2">]:</span>
+        <span class="s0">step </span><span class="s2">= </span><span class="s4">&quot;     -&quot; </span><span class="s1">if </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isnan</span><span class="s2">(</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;step&quot;</span><span class="s2">]) </span><span class="s1">else </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">row</span><span class="s2">[</span><span class="s4">'step'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}</span><span class="s4">&quot;</span>
+        <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">row</span><span class="s2">[</span><span class="s4">'n'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">2d</span><span class="s1">}  {</span><span class="s0">row</span><span class="s2">[</span><span class="s4">'z'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">&gt;22.14g</span><span class="s1">}   </span><span class="s4">&quot;</span>
+              <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">row</span><span class="s2">[</span><span class="s4">'residual'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}      {</span><span class="s0">step</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s1">\n</span><span class="s4">Stoppårsak:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;reason&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Iterasjoner:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">])</span>
+    <span class="s1">if </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">]:</span>
+        <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Nærmeste nullpunkt:&quot;</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">[</span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;root&quot;</span><span class="s2">]])</span>
+
+
+<span class="s1">def </span><span class="s0">plot_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Sammenlign residual og skrittlengde gjennom én iterasjon.&quot;&quot;&quot;</span>
+    <span class="s0">rows </span><span class="s2">= </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;history&quot;</span><span class="s2">]</span>
+    <span class="s0">n </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">array</span><span class="s2">([</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;n&quot;</span><span class="s2">] </span><span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">rows</span><span class="s2">])</span>
+    <span class="s0">residuals </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">array</span><span class="s2">([</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;residual&quot;</span><span class="s2">] </span><span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">rows</span><span class="s2">])</span>
+    <span class="s0">steps </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">array</span><span class="s2">([</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;step&quot;</span><span class="s2">] </span><span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">rows</span><span class="s2">])</span>
+
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">close</span><span class="s2">(</span><span class="s4">&quot;all&quot;</span><span class="s2">)</span>
+    <span class="s0">fig</span><span class="s2">, </span><span class="s0">ax </span><span class="s2">= </span><span class="s0">plt</span><span class="s2">.</span><span class="s0">subplots</span><span class="s2">()</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">semilogy</span><span class="s2">(</span><span class="s0">n</span><span class="s2">, </span><span class="s0">residuals</span><span class="s2">, </span><span class="s4">&quot;o-&quot;</span><span class="s2">, </span><span class="s0">label</span><span class="s2">=</span><span class="s4">&quot;Residual |f(zₙ)|&quot;</span><span class="s2">)</span>
+    <span class="s1">if </span><span class="s0">len</span><span class="s2">(</span><span class="s0">steps</span><span class="s2">) &gt; </span><span class="s5">1</span><span class="s2">:</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">semilogy</span><span class="s2">(</span><span class="s0">n</span><span class="s2">[</span><span class="s5">1</span><span class="s2">:], </span><span class="s0">steps</span><span class="s2">[</span><span class="s5">1</span><span class="s2">:], </span><span class="s4">&quot;o-&quot;</span><span class="s2">, </span><span class="s0">label</span><span class="s2">=</span><span class="s4">&quot;Skritt |zₙ − zₙ₋₁|&quot;</span><span class="s2">)</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_xlabel</span><span class="s2">(</span><span class="s4">&quot;Iterasjon n&quot;</span><span class="s2">)</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_ylabel</span><span class="s2">(</span><span class="s4">&quot;Størrelse&quot;</span><span class="s2">)</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_title</span><span class="s2">(</span><span class="s4">&quot;Residual og skrittlengde&quot;</span><span class="s2">)</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">grid</span><span class="s2">(</span><span class="s1">True</span><span class="s2">)</span>
+    <span class="s0">ax</span><span class="s2">.</span><span class="s0">legend</span><span class="s2">()</span>
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">show</span><span class="s2">()</span><hr class="ls0"><span class="s0">#%% 
+starting_values </span><span class="s2">= [</span><span class="s5">1.5</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">+</span><span class="s5">1j</span><span class="s2">, </span><span class="s5">0.1</span><span class="s2">, </span><span class="s5">1j</span><span class="s2">]</span>
+
+<span class="s1">for </span><span class="s0">z0 </span><span class="s1">in </span><span class="s0">starting_values</span><span class="s2">:</span>
+    <span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;</span><span class="s1">\n</span><span class="s4">Startverdi:&quot;</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;  konvergert:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;  iterasjoner:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;  stoppårsak:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;reason&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;  siste residual:&quot;</span><span class="s2">, </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;history&quot;</span><span class="s2">][-</span><span class="s5">1</span><span class="s2">][</span><span class="s4">&quot;residual&quot;</span><span class="s2">])</span>
+    <span class="s1">if </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">]:</span>
+        <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;  nullpunkt:&quot;</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">[</span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;root&quot;</span><span class="s2">]])</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s6"># Bytt startverdien med en verdi du vil undersøke nærmere.</span>
+<span class="s0">z0 </span><span class="s2">= -</span><span class="s5">1 </span><span class="s2">+ </span><span class="s5">1j</span>
+<span class="s0">z1 </span><span class="s2">= </span><span class="s5">400</span><span class="s2">+</span><span class="s5">0.j</span>
+<span class="s0">z2 </span><span class="s2">= </span><span class="s5">1</span>
+
+<span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span>
+<span class="s0">plot_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span>
+
+<span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z1</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span>
+<span class="s0">plot_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span>
+
+<span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z2</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span>
+<span class="s0">plot_trace</span><span class="s2">(</span><span class="s0">result</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Konvergerer alle startverdiene mot samme nullpunkt? 
+ 
+Nei funksjon z0 og z2 konvergerer mot samme nullpunkt 
+$$ 
+-0.727136084491198+0.43001428832971644j. 
+$$ 
+Vi kan se i iterasjonsforløpet til funksjon z2 at rundt steg 35 til 40 sp begynner den å ligne på iteratene til funksjon z0. Dette viser at iterasjonsforløpet etter hvert havner i samme områdre og konvergerer mot det samme nullpunktet. 
+ 
+Funksjonen z1 ser ut til å ikke konverger mot noen av nullpunktene. Residulaenen varier veldig og svinger opp og ned, og bergeningen stopper, fordi `maxiter` blir nådd. 
+ 
+&lt;br&gt; 
+ 
+### 2. Avtar residualen i hvert eneste steg 
+Nei residualen er ikke garantert til å avta i hvert eneste steg. 
+ 
+I graf A så avtar residualen i hvert eneste steg og går mot null 
+ 
+I i graf B så varier residualen mye og går opp og ned. 
+ 
+I graf C så avtar residualen og går mot null, men residualen øker enekelte steder underveis. For eksempel rundt iterasjon 20 og 30 så øker residualen to ganger, men etter det så går den tilbake til å gå mot null. 
+ 
+&lt;br&gt; 
+ 
+### 3. Avtar residual og skrittlengde i samme takt? 
+ 
+Residualen og skrittlengden avtar i samme takt. Ser vi ut ifra grafen så kan vi lese at når residualen avtar så avtar også skrittlengden, samme når residualen øker så øker skrittlengden. 
+ 
+&lt;br&gt; 
+ 
+### 4. Hvorfor trenger programmet både residualtoleranse og `maxiter`? 
+ 
+Programmet trenger residualtoleranse for å avgjør når en løsning er god nok. Når løsningen når grensen vi har satt oss så regnes iterasjonen som konvergert, og programmet kan stoppe. 
+ 
+`maxiter` fungerer som en grense for antall iterasjoner som skal gjennomføres. Uten `maxiter` kunne programmet fortsatt å regne nye iterasjoner lenge dersom residualen alldri blir god nok. Dette ser vi for eksempel i grafen til funksjonen z1 hvor den ikke konvergerer mot et nullpunkt og når `maxiter` grensen på 50 iterasjoner. 
+ 
+### 5. Hva skjer dersom et iterat kommer nært et punkt det $f'(z)=0$? 
+Hvis iteratet kommer nærme null, vil programmet måtte dele på et veldig lite tall. Dermed kan dette føre til at steget blir veldig stort, f.eks: 
+ 
+$$ 
+\frac{f(z)}{f'(z)}=\frac{0.1}{0.00001}=10\,000 
+$$ 
+ 
+Dette kan forklare hvorfor i noen tilfeller hvor skrittlengden plutselig øker. <hr class="ls0">#%% md 
+## Oppgave 3 <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">newton_grid</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">bounds</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">=</span><span class="s5">400</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s5">400</span><span class="s2">,</span>
+                <span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">, </span><span class="s0">derivative_tol</span><span class="s2">=</span><span class="s5">1e-14</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Kjør det samme Newton-forsøket for alle pikslene i et rektangel. 
+ 
+    bounds velger delen av det komplekse planet vi ser. nx og ny bestemmer 
+    bildeoppløsningen, ikke nøyaktigheten til én Newton-iterasjon. Returverdien 
+    inneholder både funnet nullpunkt, iterasjonstall og sluttresidual. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">bounds</span>
+    <span class="s0">x </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">)</span>
+    <span class="s0">y </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">)</span>
+    <span class="s0">z </span><span class="s2">= </span><span class="s0">x</span><span class="s2">[</span><span class="s1">None</span><span class="s2">, :] + </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[:, </span><span class="s1">None</span><span class="s2">]</span>
+
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">full</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, -</span><span class="s5">1</span><span class="s2">, </span><span class="s0">dtype</span><span class="s2">=</span><span class="s0">int</span><span class="s2">)</span>
+    <span class="s0">iterations </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">zeros</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, </span><span class="s0">dtype</span><span class="s2">=</span><span class="s0">int</span><span class="s2">)</span>
+    <span class="s6"># active forteller hvilke piksler som fortsatt trenger et nytt Newton-skritt.</span>
+    <span class="s0">active </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">ones</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, </span><span class="s0">dtype</span><span class="s2">=</span><span class="s0">bool</span><span class="s2">)</span>
+
+    <span class="s1">for </span><span class="s0">n </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s5">1</span><span class="s2">, </span><span class="s0">maxiter </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">):</span>
+        <span class="s1">with </span><span class="s0">np</span><span class="s2">.</span><span class="s0">errstate</span><span class="s2">(</span><span class="s0">over</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">, </span><span class="s0">divide</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">, </span><span class="s0">invalid</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">):</span>
+            <span class="s0">derivative </span><span class="s2">= </span><span class="s0">df</span><span class="s2">(</span><span class="s0">z</span><span class="s2">)</span>
+            <span class="s0">safe </span><span class="s2">= (</span><span class="s0">active </span><span class="s2">&amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">real</span><span class="s2">) &amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">)</span>
+                    <span class="s2">&amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">derivative</span><span class="s2">.</span><span class="s0">real</span><span class="s2">)</span>
+                    <span class="s2">&amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">derivative</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">)</span>
+                    <span class="s2">&amp; (</span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">derivative</span><span class="s2">) &gt; </span><span class="s0">derivative_tol</span><span class="s2">))</span>
+
+            <span class="s6"># Skill ugyldige beregninger fra dem som bare trenger flere steg.</span>
+            <span class="s0">invalid </span><span class="s2">= </span><span class="s0">active </span><span class="s2">&amp; ~</span><span class="s0">safe</span>
+            <span class="s0">basin</span><span class="s2">[</span><span class="s0">invalid</span><span class="s2">] = -</span><span class="s5">2</span>
+            <span class="s0">iterations</span><span class="s2">[</span><span class="s0">invalid</span><span class="s2">] = </span><span class="s0">n</span><span class="s2">-</span><span class="s5">1</span>
+            <span class="s0">active</span><span class="s2">[</span><span class="s0">invalid</span><span class="s2">] = </span><span class="s1">False</span>
+
+            <span class="s0">z</span><span class="s2">[</span><span class="s0">safe</span><span class="s2">] = </span><span class="s0">z</span><span class="s2">[</span><span class="s0">safe</span><span class="s2">] - </span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">[</span><span class="s0">safe</span><span class="s2">])/</span><span class="s0">derivative</span><span class="s2">[</span><span class="s0">safe</span><span class="s2">]</span>
+            <span class="s0">finite </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">real</span><span class="s2">) &amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">)</span>
+            <span class="s0">invalid_after </span><span class="s2">= </span><span class="s0">active </span><span class="s2">&amp; ~</span><span class="s0">finite</span>
+            <span class="s0">basin</span><span class="s2">[</span><span class="s0">invalid_after</span><span class="s2">] = -</span><span class="s5">2</span>
+            <span class="s0">iterations</span><span class="s2">[</span><span class="s0">invalid_after</span><span class="s2">] = </span><span class="s0">n</span>
+            <span class="s0">active</span><span class="s2">[</span><span class="s0">invalid_after</span><span class="s2">] = </span><span class="s1">False</span>
+
+            <span class="s0">residual </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">full</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, </span><span class="s0">np</span><span class="s2">.</span><span class="s0">inf</span><span class="s2">)</span>
+            <span class="s0">residual</span><span class="s2">[</span><span class="s0">active</span><span class="s2">] = </span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">[</span><span class="s0">active</span><span class="s2">]))</span>
+            <span class="s0">converged </span><span class="s2">= </span><span class="s0">active </span><span class="s2">&amp; (</span><span class="s0">residual </span><span class="s2">&lt; </span><span class="s0">tol</span><span class="s2">)</span>
+
+        <span class="s1">if </span><span class="s0">np</span><span class="s2">.</span><span class="s0">any</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">):</span>
+            <span class="s6"># Først nå bestemmer vi hvilket nullpunkt pikslene endte ved.</span>
+            <span class="s0">converged_values </span><span class="s2">= </span><span class="s0">z</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">]</span>
+            <span class="s0">distances </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">converged_values</span><span class="s2">[:, </span><span class="s1">None</span><span class="s2">] - </span><span class="s0">roots</span><span class="s2">[</span><span class="s1">None</span><span class="s2">, :])</span>
+            <span class="s0">basin</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">] = </span><span class="s0">np</span><span class="s2">.</span><span class="s0">argmin</span><span class="s2">(</span><span class="s0">distances</span><span class="s2">, </span><span class="s0">axis</span><span class="s2">=</span><span class="s5">1</span><span class="s2">)</span>
+            <span class="s0">iterations</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">] = </span><span class="s0">n</span>
+            <span class="s0">active</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">] = </span><span class="s1">False</span>
+
+        <span class="s1">if not </span><span class="s0">np</span><span class="s2">.</span><span class="s0">any</span><span class="s2">(</span><span class="s0">active</span><span class="s2">):</span>
+            <span class="s1">break</span>
+
+    <span class="s0">iterations</span><span class="s2">[</span><span class="s0">active</span><span class="s2">] = </span><span class="s0">maxiter</span>
+    <span class="s0">final_residual </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">full</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, </span><span class="s0">np</span><span class="s2">.</span><span class="s0">inf</span><span class="s2">)</span>
+    <span class="s0">finite </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">real</span><span class="s2">) &amp; </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">z</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">)</span>
+    <span class="s1">with </span><span class="s0">np</span><span class="s2">.</span><span class="s0">errstate</span><span class="s2">(</span><span class="s0">over</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">, </span><span class="s0">invalid</span><span class="s2">=</span><span class="s4">&quot;ignore&quot;</span><span class="s2">):</span>
+        <span class="s0">final_residual</span><span class="s2">[</span><span class="s0">finite</span><span class="s2">] = </span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">f</span><span class="s2">(</span><span class="s0">z</span><span class="s2">[</span><span class="s0">finite</span><span class="s2">]))</span>
+
+    <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;basin&quot;</span><span class="s2">: </span><span class="s0">basin</span><span class="s2">, </span><span class="s4">&quot;iterations&quot;</span><span class="s2">: </span><span class="s0">iterations</span><span class="s2">,</span>
+            <span class="s4">&quot;residual&quot;</span><span class="s2">: </span><span class="s0">final_residual</span><span class="s2">, </span><span class="s4">&quot;z&quot;</span><span class="s2">: </span><span class="s0">z</span><span class="s2">,</span>
+            <span class="s4">&quot;bounds&quot;</span><span class="s2">: </span><span class="s0">bounds</span><span class="s2">, </span><span class="s4">&quot;tol&quot;</span><span class="s2">: </span><span class="s0">tol</span><span class="s2">, </span><span class="s4">&quot;maxiter&quot;</span><span class="s2">: </span><span class="s0">maxiter</span><span class="s2">,</span>
+            <span class="s4">&quot;roots&quot;</span><span class="s2">: </span><span class="s0">roots</span><span class="s2">}</span>
+
+
+<span class="s0">ROOT_COLORS </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">array</span><span class="s2">([</span>
+    <span class="s2">[</span><span class="s5">0.90</span><span class="s2">, </span><span class="s5">0.20</span><span class="s2">, </span><span class="s5">0.20</span><span class="s2">], [</span><span class="s5">0.20</span><span class="s2">, </span><span class="s5">0.65</span><span class="s2">, </span><span class="s5">0.95</span><span class="s2">], [</span><span class="s5">0.25</span><span class="s2">, </span><span class="s5">0.80</span><span class="s2">, </span><span class="s5">0.35</span><span class="s2">],</span>
+    <span class="s2">[</span><span class="s5">0.90</span><span class="s2">, </span><span class="s5">0.65</span><span class="s2">, </span><span class="s5">0.15</span><span class="s2">], [</span><span class="s5">0.65</span><span class="s2">, </span><span class="s5">0.35</span><span class="s2">, </span><span class="s5">0.90</span><span class="s2">], [</span><span class="s5">0.20</span><span class="s2">, </span><span class="s5">0.80</span><span class="s2">, </span><span class="s5">0.80</span><span class="s2">],</span>
+<span class="s2">])</span>
+
+
+<span class="s1">def </span><span class="s0">plot_basins</span><span class="s2">(</span><span class="s0">data</span><span class="s2">, </span><span class="s0">title</span><span class="s2">=</span><span class="s4">&quot;Newtons metode: tiltrekningsområder&quot;</span><span class="s2">,</span>
+                <span class="s0">critical_points</span><span class="s2">=</span><span class="s1">None</span><span class="s2">, </span><span class="s0">iteration_cap</span><span class="s2">=</span><span class="s5">20</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Vis resultat og arbeidsmengde i hvert sitt panel. 
+ 
+    Venstre panel svarer på hvilket nullpunkt som ble funnet. Høyre panel 
+    viser antall iterasjoner. iteration_cap bestemmer hvor fargeskalaen 
+    stopper; større verdier vises fortsatt, men får samme endefarge. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">iterations </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">]</span>
+    <span class="s0">maxiter </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;maxiter&quot;</span><span class="s2">]</span>
+    <span class="s0">roots </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;roots&quot;</span><span class="s2">]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+
+    <span class="s6"># Basin-fargen skal bare kode nullpunkt, ikke iterasjonstall.</span>
+    <span class="s0">basin_image </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">full</span><span class="s2">(</span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape </span><span class="s2">+ (</span><span class="s5">3</span><span class="s2">,), </span><span class="s5">0.25</span><span class="s2">)</span>
+    <span class="s0">basin_image</span><span class="s2">[</span><span class="s0">basin </span><span class="s2">== -</span><span class="s5">2</span><span class="s2">] = </span><span class="s5">0.0</span>
+    <span class="s0">legend_handles </span><span class="s2">= []</span>
+    <span class="s1">for </span><span class="s0">k </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s0">len</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">)):</span>
+        <span class="s0">mask </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">== </span><span class="s0">k</span>
+        <span class="s0">color </span><span class="s2">= </span><span class="s0">ROOT_COLORS</span><span class="s2">[</span><span class="s0">k </span><span class="s2">% </span><span class="s0">len</span><span class="s2">(</span><span class="s0">ROOT_COLORS</span><span class="s2">)]</span>
+        <span class="s0">basin_image</span><span class="s2">[</span><span class="s0">mask</span><span class="s2">] = </span><span class="s0">color</span>
+        <span class="s0">legend_handles</span><span class="s2">.</span><span class="s0">append</span><span class="s2">(</span><span class="s0">Patch</span><span class="s2">(</span><span class="s0">facecolor</span><span class="s2">=</span><span class="s0">color</span><span class="s2">, </span><span class="s0">label</span><span class="s2">=</span><span class="s4">f&quot;Mot r</span><span class="s1">{</span><span class="s0">k</span><span class="s2">+</span><span class="s5">1</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">))</span>
+
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">close</span><span class="s2">(</span><span class="s4">&quot;all&quot;</span><span class="s2">)</span>
+    <span class="s0">fig</span><span class="s2">, (</span><span class="s0">ax_basin</span><span class="s2">, </span><span class="s0">ax_iterations</span><span class="s2">) = </span><span class="s0">plt</span><span class="s2">.</span><span class="s0">subplots</span><span class="s2">(</span>
+        <span class="s5">1</span><span class="s2">, </span><span class="s5">2</span><span class="s2">, </span><span class="s0">figsize</span><span class="s2">=(</span><span class="s5">13</span><span class="s2">, </span><span class="s5">6</span><span class="s2">), </span><span class="s0">constrained_layout</span><span class="s2">=</span><span class="s1">True</span>
+    <span class="s2">)</span>
+
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">imshow</span><span class="s2">(</span><span class="s0">basin_image</span><span class="s2">, </span><span class="s0">origin</span><span class="s2">=</span><span class="s4">&quot;lower&quot;</span><span class="s2">,</span>
+                    <span class="s0">extent</span><span class="s2">=(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">),</span>
+                    <span class="s0">interpolation</span><span class="s2">=</span><span class="s4">&quot;nearest&quot;</span><span class="s2">)</span>
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">, </span><span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">, </span><span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">,</span>
+                     <span class="s0">s</span><span class="s2">=</span><span class="s5">70</span><span class="s2">, </span><span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;o&quot;</span><span class="s2">)</span>
+    <span class="s1">for </span><span class="s0">k</span><span class="s2">, </span><span class="s0">root </span><span class="s1">in </span><span class="s0">enumerate</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">):</span>
+        <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">annotate</span><span class="s2">(</span><span class="s4">f&quot;r</span><span class="s1">{</span><span class="s0">k</span><span class="s2">+</span><span class="s5">1</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">, (</span><span class="s0">root</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">root</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">),</span>
+                          <span class="s0">xytext</span><span class="s2">=(</span><span class="s5">7</span><span class="s2">, </span><span class="s5">7</span><span class="s2">), </span><span class="s0">textcoords</span><span class="s2">=</span><span class="s4">&quot;offset points&quot;</span><span class="s2">,</span>
+                          <span class="s0">color</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">, </span><span class="s0">weight</span><span class="s2">=</span><span class="s4">&quot;bold&quot;</span><span class="s2">)</span>
+    <span class="s1">if </span><span class="s0">critical_points </span><span class="s1">is not None</span><span class="s2">:</span>
+        <span class="s0">critical_handle </span><span class="s2">= </span><span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span>
+            <span class="s0">critical_points</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">critical_points</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">,</span>
+            <span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">, </span><span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">, </span><span class="s0">s</span><span class="s2">=</span><span class="s5">70</span><span class="s2">, </span><span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;X&quot;</span><span class="s2">,</span>
+            <span class="s0">linewidths</span><span class="s2">=</span><span class="s5">1.5</span><span class="s2">, </span><span class="s0">label</span><span class="s2">=</span><span class="s4">&quot;Kritiske punkter&quot;</span>
+        <span class="s2">)</span>
+        <span class="s0">legend_handles</span><span class="s2">.</span><span class="s0">append</span><span class="s2">(</span><span class="s0">critical_handle</span><span class="s2">)</span>
+
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">set_title</span><span class="s2">(</span><span class="s4">&quot;Funnet nullpunkt&quot;</span><span class="s2">)</span>
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">legend</span><span class="s2">(</span><span class="s0">handles</span><span class="s2">=</span><span class="s0">legend_handles</span><span class="s2">, </span><span class="s0">loc</span><span class="s2">=</span><span class="s4">&quot;best&quot;</span><span class="s2">)</span>
+
+    <span class="s0">converged </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">&gt;= </span><span class="s5">0</span>
+    <span class="s6"># Avkort skalaen slik at noen få trege piksler ikke vasker ut hele kartet.</span>
+    <span class="s0">capped_iterations </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">ma</span><span class="s2">.</span><span class="s0">masked_where</span><span class="s2">(</span>
+        <span class="s2">~</span><span class="s0">converged</span><span class="s2">, </span><span class="s0">np</span><span class="s2">.</span><span class="s0">minimum</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">, </span><span class="s0">iteration_cap</span><span class="s2">)</span>
+    <span class="s2">)</span>
+    <span class="s0">iteration_image </span><span class="s2">= </span><span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">imshow</span><span class="s2">(</span>
+        <span class="s0">capped_iterations</span><span class="s2">, </span><span class="s0">origin</span><span class="s2">=</span><span class="s4">&quot;lower&quot;</span><span class="s2">, </span><span class="s0">extent</span><span class="s2">=(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">),</span>
+        <span class="s0">interpolation</span><span class="s2">=</span><span class="s4">&quot;nearest&quot;</span><span class="s2">, </span><span class="s0">cmap</span><span class="s2">=</span><span class="s4">&quot;viridis&quot;</span><span class="s2">,</span>
+        <span class="s0">vmin</span><span class="s2">=</span><span class="s5">1</span><span class="s2">, </span><span class="s0">vmax</span><span class="s2">=</span><span class="s0">iteration_cap</span>
+    <span class="s2">)</span>
+    <span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">, </span><span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">,</span>
+                          <span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">, </span><span class="s0">s</span><span class="s2">=</span><span class="s5">45</span><span class="s2">, </span><span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;o&quot;</span><span class="s2">)</span>
+    <span class="s0">colorbar </span><span class="s2">= </span><span class="s0">fig</span><span class="s2">.</span><span class="s0">colorbar</span><span class="s2">(</span><span class="s0">iteration_image</span><span class="s2">, </span><span class="s0">ax</span><span class="s2">=</span><span class="s0">ax_iterations</span><span class="s2">, </span><span class="s0">shrink</span><span class="s2">=</span><span class="s5">0.82</span><span class="s2">)</span>
+    <span class="s0">colorbar</span><span class="s2">.</span><span class="s0">set_label</span><span class="s2">(</span>
+        <span class="s4">f&quot;Antall iterasjoner (</span><span class="s1">{</span><span class="s0">iteration_cap</span><span class="s1">} </span><span class="s4">= </span><span class="s1">{</span><span class="s0">iteration_cap</span><span class="s1">} </span><span class="s4">eller flere)&quot;</span>
+    <span class="s2">)</span>
+    <span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">set_title</span><span class="s2">(</span><span class="s4">&quot;Iterasjoner før residualkravet er oppfylt&quot;</span><span class="s2">)</span>
+
+    <span class="s1">for </span><span class="s0">ax </span><span class="s1">in </span><span class="s2">(</span><span class="s0">ax_basin</span><span class="s2">, </span><span class="s0">ax_iterations</span><span class="s2">):</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_xlabel</span><span class="s2">(</span><span class="s4">&quot;Re(z₀)&quot;</span><span class="s2">)</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_ylabel</span><span class="s2">(</span><span class="s4">&quot;Im(z₀)&quot;</span><span class="s2">)</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_aspect</span><span class="s2">(</span><span class="s4">&quot;equal&quot;</span><span class="s2">)</span>
+
+    <span class="s0">fig</span><span class="s2">.</span><span class="s0">suptitle</span><span class="s2">(</span><span class="s0">title</span><span class="s2">)</span>
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">show</span><span class="s2">()</span>
+
+
+<span class="s1">def </span><span class="s0">summarize_grid</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Trekk ut noen få tall som gjør ulike rutenett sammenlignbare.&quot;&quot;&quot;</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">iterations </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">]</span>
+    <span class="s0">residual </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;residual&quot;</span><span class="s2">]</span>
+    <span class="s0">converged </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">&gt;= </span><span class="s5">0</span>
+    <span class="s0">total </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">.</span><span class="s0">size</span>
+
+    <span class="s0">summary </span><span class="s2">= {</span>
+        <span class="s4">&quot;total&quot;</span><span class="s2">: </span><span class="s0">total</span><span class="s2">,</span>
+        <span class="s4">&quot;converged&quot;</span><span class="s2">: </span><span class="s0">int</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">)),</span>
+        <span class="s4">&quot;not_converged&quot;</span><span class="s2">: </span><span class="s0">int</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">basin </span><span class="s2">== -</span><span class="s5">1</span><span class="s2">)),</span>
+        <span class="s4">&quot;invalid&quot;</span><span class="s2">: </span><span class="s0">int</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">basin </span><span class="s2">== -</span><span class="s5">2</span><span class="s2">)),</span>
+        <span class="s4">&quot;fraction_converged&quot;</span><span class="s2">: </span><span class="s0">float</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">mean</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">)),</span>
+        <span class="s4">&quot;mean_iterations&quot;</span><span class="s2">: (</span><span class="s0">float</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">mean</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">]))</span>
+                            <span class="s1">if </span><span class="s0">np</span><span class="s2">.</span><span class="s0">any</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">) </span><span class="s1">else </span><span class="s0">np</span><span class="s2">.</span><span class="s0">nan</span><span class="s2">),</span>
+        <span class="s4">&quot;max_accepted_residual&quot;</span><span class="s2">: (</span><span class="s0">float</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">max</span><span class="s2">(</span><span class="s0">residual</span><span class="s2">[</span><span class="s0">converged</span><span class="s2">]))</span>
+                                  <span class="s1">if </span><span class="s0">np</span><span class="s2">.</span><span class="s0">any</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">) </span><span class="s1">else </span><span class="s0">np</span><span class="s2">.</span><span class="s0">nan</span><span class="s2">),</span>
+    <span class="s2">}</span>
+    <span class="s1">return </span><span class="s0">summary</span>
+
+
+<span class="s1">def </span><span class="s0">print_summary</span><span class="s2">(</span><span class="s0">summary</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Skriv sammendraget uten at vi må huske alle nøkkelnavnene.&quot;&quot;&quot;</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Antall startverdier:     &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;total&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Konvergert:              &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Nådde maxiter:           &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;not_converged&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Ugyldig beregning:       &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;invalid&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Andel konvergert:        &quot;</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'fraction_converged'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.4f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Gjennomsnitt iterasjoner:&quot;</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'mean_iterations'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.2f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Største godkjente residual:&quot;</span><span class="s2">,</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'max_accepted_residual'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% 
+bounds </span><span class="s2">= </span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">&quot;plot_window&quot;</span><span class="s2">]</span>
+
+<span class="s0">basin_data </span><span class="s2">= </span><span class="s0">newton_grid</span><span class="s2">(</span>
+    <span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">,</span>
+    <span class="s0">bounds</span><span class="s2">=</span><span class="s0">bounds</span><span class="s2">,</span>
+    <span class="s0">nx</span><span class="s2">=</span><span class="s5">400</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s5">400</span><span class="s2">,</span>
+    <span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">,</span>
+    <span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">,</span>
+<span class="s2">)</span>
+
+<span class="s0">plot_basins</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">, </span><span class="s4">f&quot;Funksjon </span><span class="s1">{</span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">'label'</span><span class="s2">]</span><span class="s1">}</span><span class="s4">: </span><span class="s1">{</span><span class="s0">my_function</span><span class="s2">[</span><span class="s4">'formula'</span><span class="s2">]</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+<span class="s0">print_summary</span><span class="s2">(</span><span class="s0">summarize_grid</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">))</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s1">def </span><span class="s0">first_start_in</span><span class="s2">(</span><span class="s0">data</span><span class="s2">, </span><span class="s0">mask</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Finn én startverdi i en kategori, hvis kategorien finnes.&quot;&quot;&quot;</span>
+    <span class="s0">indices </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">argwhere</span><span class="s2">(</span><span class="s0">mask</span><span class="s2">)</span>
+    <span class="s1">if </span><span class="s0">len</span><span class="s2">(</span><span class="s0">indices</span><span class="s2">) == </span><span class="s5">0</span><span class="s2">:</span>
+        <span class="s1">return None</span>
+    <span class="s0">row</span><span class="s2">, </span><span class="s0">col </span><span class="s2">= </span><span class="s0">indices</span><span class="s2">[</span><span class="s0">len</span><span class="s2">(</span><span class="s0">indices</span><span class="s2">)//</span><span class="s5">2</span><span class="s2">]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+    <span class="s0">ny</span><span class="s2">, </span><span class="s0">nx </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">].</span><span class="s0">shape</span>
+    <span class="s0">x </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">)</span>
+    <span class="s0">y </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">)</span>
+    <span class="s1">return </span><span class="s0">x</span><span class="s2">[</span><span class="s0">col</span><span class="s2">] + </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[</span><span class="s0">row</span><span class="s2">]</span>
+
+
+<span class="s0">converged </span><span class="s2">= </span><span class="s0">basin_data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">] &gt;= </span><span class="s5">0</span>
+<span class="s0">categories </span><span class="s2">= {</span>
+    <span class="s4">&quot;rask&quot;</span><span class="s2">: </span><span class="s0">converged </span><span class="s2">&amp; (</span><span class="s0">basin_data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">] &lt;= </span><span class="s5">6</span><span class="s2">),</span>
+    <span class="s4">&quot;langsom&quot;</span><span class="s2">: </span><span class="s0">converged </span><span class="s2">&amp; (</span><span class="s0">basin_data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">] &gt; </span><span class="s5">15</span><span class="s2">),</span>
+    <span class="s4">&quot;mislykket&quot;</span><span class="s2">: </span><span class="s0">basin_data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">] &lt; </span><span class="s5">0</span><span class="s2">,</span>
+<span class="s2">}</span>
+
+<span class="s1">for </span><span class="s0">name</span><span class="s2">, </span><span class="s0">mask </span><span class="s1">in </span><span class="s0">categories</span><span class="s2">.</span><span class="s0">items</span><span class="s2">():</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;Forslag, </span><span class="s1">{</span><span class="s0">name</span><span class="s1">}</span><span class="s4">:&quot;</span><span class="s2">, </span><span class="s0">first_start_in</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">, </span><span class="s0">mask</span><span class="s2">))</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Hvilke områder konvergerer mot hvert nullpunkt? 
+- Rød område konverger mot r1 
+- Blått område konverger mot r2 
+- Grønt område konverger mot r3 
+- Orasnje område konverger mot r4 
+ 
+&lt;br&gt; 
+ 
+### 2. Hvor ligger startverdiene som krever flest iterasjoner? 
+Startverdiene som krever flest iterasjoner ligge i følsomme område hvor det er flere farger nær hverandre. Vi ser at de ligger i et kryss, langs en linke vertikalt y = 0 og horisontalt x = 0. 
+ 
+&lt;br&gt; 
+ 
+### 3. Hvordan skiller punkter nær en grense seg fra punkter langt inne i et tiltrekningsområde? 
+Det nærmer vi er tiltrekningsområpde det færre antall iterasjoner bruker newtons metode på å nå residualkravet. Punktene nær en grense bruker mer iterasjoner får å nå ett av nullpunktene. 
+ 
+&lt;br&gt; 
+ 
+### 4. Ser figuren symmetrisk ut? Sammenlign med plasseringen av nullpunktene. 
+ 
+r3 og r4 punktene ligger symmetrisk ovenfor hverandre, det samme gjelder for r1 og r2. Hadde vi brett grafen nedover så ville områdene i stor grad speilet hverandre, et motsatte farge. Vi ser at oransj og grønn speiler hverandre, og rødt og blått speiler hverandre. Denne symetriene funger ikek fra venstre mot høyre. 
+ 
+&lt;br&gt; 
+ 
+### 5. Kan et endelig rutenett bevise at alle startverdier i vinduet konvergerer? 
+ 
+Nei, alle de 160000 testede startverdiene konvergerte, men det betyr at det er flere punkter vi ikke har testet. Tester vi flere punkter vil ikke det nødvendigvis si at de kommer til å konvergere mot et nulllpunkt <hr class="ls0">#%% md 
+## Oppgave 4 <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">compare_with_nearest</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Test nærmeste-nullpunkt-gjetningen på hele rutenettet.&quot;&quot;&quot;</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">roots </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;roots&quot;</span><span class="s2">]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+    <span class="s0">ny</span><span class="s2">, </span><span class="s0">nx </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape</span>
+    <span class="s0">x </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">)</span>
+    <span class="s0">y </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">)</span>
+    <span class="s0">z0 </span><span class="s2">= </span><span class="s0">x</span><span class="s2">[</span><span class="s1">None</span><span class="s2">, :] + </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[:, </span><span class="s1">None</span><span class="s2">]</span>
+
+    <span class="s0">nearest </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">argmin</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">abs</span><span class="s2">(</span><span class="s0">z0</span><span class="s2">[..., </span><span class="s1">None</span><span class="s2">] - </span><span class="s0">roots</span><span class="s2">), </span><span class="s0">axis</span><span class="s2">=</span><span class="s5">2</span><span class="s2">)</span>
+    <span class="s0">converged </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">&gt;= </span><span class="s5">0</span>
+    <span class="s0">different </span><span class="s2">= </span><span class="s0">converged </span><span class="s2">&amp; (</span><span class="s0">basin </span><span class="s2">!= </span><span class="s0">nearest</span><span class="s2">)</span>
+    <span class="s0">fraction </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">different</span><span class="s2">) / </span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">)</span>
+    <span class="s1">return </span><span class="s2">{</span><span class="s4">&quot;nearest&quot;</span><span class="s2">: </span><span class="s0">nearest</span><span class="s2">, </span><span class="s4">&quot;different&quot;</span><span class="s2">: </span><span class="s0">different</span><span class="s2">,</span>
+            <span class="s4">&quot;fraction&quot;</span><span class="s2">: </span><span class="s0">fraction</span><span class="s2">, </span><span class="s4">&quot;z0&quot;</span><span class="s2">: </span><span class="s0">z0</span><span class="s2">}</span>
+
+
+<span class="s0">nearest_test </span><span class="s2">= </span><span class="s0">compare_with_nearest</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">)</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Andel konvergerte startverdier som ikke fant nærmeste nullpunkt:&quot;</span><span class="s2">,</span>
+      <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">nearest_test</span><span class="s2">[</span><span class="s4">'fraction'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.4f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+
+<span class="s0">indices </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">argwhere</span><span class="s2">(</span><span class="s0">nearest_test</span><span class="s2">[</span><span class="s4">&quot;different&quot;</span><span class="s2">])</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Noen moteksempler:&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">row</span><span class="s2">, </span><span class="s0">col </span><span class="s1">in </span><span class="s0">indices</span><span class="s2">[:</span><span class="s5">5</span><span class="s2">]:</span>
+    <span class="s0">z0 </span><span class="s2">= </span><span class="s0">nearest_test</span><span class="s2">[</span><span class="s4">&quot;z0&quot;</span><span class="s2">][</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col</span><span class="s2">]</span>
+    <span class="s0">nearest_index </span><span class="s2">= </span><span class="s0">nearest_test</span><span class="s2">[</span><span class="s4">&quot;nearest&quot;</span><span class="s2">][</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col</span><span class="s2">]</span>
+    <span class="s0">found_index </span><span class="s2">= </span><span class="s0">basin_data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">][</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col</span><span class="s2">]</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;z₀=</span><span class="s1">{</span><span class="s0">z0</span><span class="s1">:</span><span class="s4">.5g</span><span class="s1">}</span><span class="s4">: nærmest </span><span class="s1">{</span><span class="s0">roots</span><span class="s2">[</span><span class="s0">nearest_index</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.5g</span><span class="s1">}</span><span class="s4">, &quot;</span>
+          <span class="s4">f&quot;men fant </span><span class="s1">{</span><span class="s0">roots</span><span class="s2">[</span><span class="s0">found_index</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.5g</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% 
+moteksempel </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">50</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">moteksempel</span><span class="s2">)</span>
+<span class="s0">plot_trace</span><span class="s2">(</span><span class="s0">moteksempel</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Hvor stor andel av de konvergerte startverdiene fant ikke nærmeste nullpunkt? 
+17.63 % av startverdiene som konvergerte fant ikke det nærmeste nullpunktet og endte opp med et annet nullpunkt 
+ 
+&lt;br&gt; 
+ 
+### 2. Hva skjer med avstanden til de ulike nullpunktene gjennom ditt valgte forløp? 
+Avstanden mellom de ulike nullpunktene varierer. Ser vi fra punkt 5 til 7 ser vi den hopper fra 
+ 
+$$ 
+−0.793348−0.050733i \rightarrow−0.247815−0.213729i \rightarrow 
+ −0.950371−0.095423i 
+$$ 
+Newton iterasjonen i starten beveger seg mellom områdene og går ikke mot et spesielt nullpunkt. Rundt iterasjon 10 så ser vi at den beveger seg mot ett nullpunkt til den slutter på iterasjon 14 og er nærmest nullpunktet: 
+ 
+$$ 
+-0.7271360844911973-0.4300142883297161j 
+$$ 
+ 
+&lt;br&gt; 
+ 
+### 3. Hvor i tiltrekningsplottet ligger de fleste moteksemplene? 
+ 
+De fleste moteksemplene ligger nær grensene mellom tiltrekningsområdene, hvor små endringer i startverdien kan føre til at newtons metode går mot et annet nullpunkt. 
+ 
+&lt;br&gt; 
+ 
+### 4. Hva kan du nå si om påstanden «Newton finner nærmeste nullpunkt»? 
+ 
+Ligger startverdien nærme et grense område og et stykke unda nullpunktet, så går den ikke nødvendivis mot nærmeste nulllpunktet, men et annet nullpunkt som ligger lengre vekke. Så påstanden &quot;Newton finner nærmeste nullpunkt&quot; stemmer i de fleste tilfellene, men ikke alle. <hr class="ls0">#%% md 
+## Oppgave 5 <hr class="ls0">#%% 
+plot_basins</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">,</span>
+            <span class="s4">&quot;Nullpunkter, kritiske punkter og tiltrekningsområder&quot;</span><span class="s2">,</span>
+            <span class="s0">critical_points</span><span class="s2">=</span><span class="s0">critical_points</span><span class="s2">)</span>
+
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Kritiske punkter:&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">point </span><span class="s1">in </span><span class="s0">critical_points</span><span class="s2">:</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot; &quot;</span><span class="s2">, </span><span class="s0">point</span><span class="s2">, </span><span class="s4">&quot;  |f(z)| =&quot;</span><span class="s2">, </span><span class="s0">abs</span><span class="s2">(</span><span class="s0">f</span><span class="s2">(</span><span class="s0">point</span><span class="s2">)))</span><hr class="ls0"><span class="s0">#%% 
+c </span><span class="s2">= </span><span class="s0">critical_points</span><span class="s2">[</span><span class="s5">0</span><span class="s2">]  </span><span class="s6"># Velg eventuelt et annet kritisk punkt.</span>
+<span class="s0">critical_starts </span><span class="s2">= [</span><span class="s0">c</span><span class="s2">, </span><span class="s0">c </span><span class="s2">+ </span><span class="s5">1e-3</span><span class="s2">, </span><span class="s0">c </span><span class="s2">+ </span><span class="s5">1e-2j</span><span class="s2">]</span>
+
+<span class="s1">for </span><span class="s0">z0 </span><span class="s1">in </span><span class="s0">critical_starts</span><span class="s2">:</span>
+    <span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">)</span>
+    <span class="s0">steps </span><span class="s2">= [</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;step&quot;</span><span class="s2">] </span><span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;history&quot;</span><span class="s2">]</span>
+             <span class="s1">if </span><span class="s0">np</span><span class="s2">.</span><span class="s0">isfinite</span><span class="s2">(</span><span class="s0">row</span><span class="s2">[</span><span class="s4">&quot;step&quot;</span><span class="s2">])]</span>
+    <span class="s0">largest_step </span><span class="s2">= </span><span class="s0">max</span><span class="s2">(</span><span class="s0">steps</span><span class="s2">) </span><span class="s1">if </span><span class="s0">steps </span><span class="s1">else </span><span class="s0">np</span><span class="s2">.</span><span class="s0">nan</span>
+    <span class="s0">found </span><span class="s2">= </span><span class="s0">roots</span><span class="s2">[</span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;root&quot;</span><span class="s2">]] </span><span class="s1">if </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">] </span><span class="s1">else </span><span class="s4">&quot;ikke funnet&quot;</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;z₀=</span><span class="s1">{</span><span class="s0">z0</span><span class="s1">:</span><span class="s4">.8g</span><span class="s1">}</span><span class="s4">: stopp=</span><span class="s1">{</span><span class="s0">result</span><span class="s2">[</span><span class="s4">'reason'</span><span class="s2">]</span><span class="s1">}</span><span class="s4">, &quot;</span>
+          <span class="s4">f&quot;største skritt=</span><span class="s1">{</span><span class="s0">largest_step</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}</span><span class="s4">, &quot;</span>
+          <span class="s4">f&quot;iterasjoner=</span><span class="s1">{</span><span class="s0">result</span><span class="s2">[</span><span class="s4">'iterations'</span><span class="s2">]</span><span class="s1">}</span><span class="s4">, nullpunkt=</span><span class="s1">{</span><span class="s0">found</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Hva skjer når startverdien er nøyaktig et kritisk punkt? 
+ 
+Når startverdien er et kritsk punkt vil det si at $f´(z_0)=0$. Derfor vil programmet prøve å dele på null, noe som ikke er mattematisk tillat. Programmet skriver derfor ut: 
+``` 
+- stopp = skriver for liten derivert 
+- største skritt = nan 
+- iterasjoner = 0 
+- nullpunkt = ikke funnet 
+``` 
+ 
+&lt;br&gt; 
+ 
+### 2. Hvordan oppfører de to nærliggende startverdiene seg? 
+ 
+Det første nærliggende startpunktet bruker 74 iterasjoner for å nå nullpunktet, og har sitt største skritt på 111. 
+ 
+Det andre startpunktet bruker bare 18 iterasjoner og har sitt største skritt på 11.07. 
+ 
+Dette viser at små endringer nær et kritisk punkt kan gi forskjellige iterasjonsforeløp. 
+ 
+&lt;br&gt; 
+ 
+### 3. Ligger områder med mange iterasjoner nær noen av de kritiske punktene? 
+ 
+Områder med mange iterasjoner ligge nær de kritiske punktene. Dette stemmer med at $f´(&lt;)$ er liten der, noe som kan føre til at vi får store Newton skritt. 
+ 
+&lt;br&gt; 
+ 
+### 4. Er liten $|f'(z_0)|$ alene nok til å forutsi hele iterasjonsforløpet? 
+ 
+Vi kan ikke vite hvordan resten av Newton iterasjonen kommer til å gå. $|f'(z_0)|$ forteller oss hvordan første iterasjonen kommer til å gå, men gir ingen indikasjon hvor resten av iterasjonene vil bli. <hr class="ls0">#%% md 
+## Oppgave 6 <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">suggest_boundary_point</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Finn et sentralt sted der to nabopiksler har forskjellig farge.&quot;&quot;&quot;</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">left </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">[:, :-</span><span class="s5">1</span><span class="s2">]</span>
+    <span class="s0">right </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">:]</span>
+    <span class="s0">candidates </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">argwhere</span><span class="s2">((</span><span class="s0">left </span><span class="s2">&gt;= </span><span class="s5">0</span><span class="s2">) &amp; (</span><span class="s0">right </span><span class="s2">&gt;= </span><span class="s5">0</span><span class="s2">) &amp; (</span><span class="s0">left </span><span class="s2">!= </span><span class="s0">right</span><span class="s2">))</span>
+    <span class="s1">if </span><span class="s0">len</span><span class="s2">(</span><span class="s0">candidates</span><span class="s2">) == </span><span class="s5">0</span><span class="s2">:</span>
+        <span class="s1">raise </span><span class="s0">ValueError</span><span class="s2">(</span><span class="s4">&quot;Fant ingen grense mellom to tiltrekningsområder&quot;</span><span class="s2">)</span>
+
+    <span class="s0">ny</span><span class="s2">, </span><span class="s0">nx </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape</span>
+    <span class="s0">margin_y </span><span class="s2">= </span><span class="s0">max</span><span class="s2">(</span><span class="s5">1</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">//</span><span class="s5">20</span><span class="s2">)</span>
+    <span class="s0">margin_x </span><span class="s2">= </span><span class="s0">max</span><span class="s2">(</span><span class="s5">1</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">//</span><span class="s5">20</span><span class="s2">)</span>
+    <span class="s0">interior </span><span class="s2">= </span><span class="s0">candidates</span><span class="s2">[(</span><span class="s0">candidates</span><span class="s2">[:, </span><span class="s5">0</span><span class="s2">] &gt;= </span><span class="s0">margin_y</span><span class="s2">)</span>
+                          <span class="s2">&amp; (</span><span class="s0">candidates</span><span class="s2">[:, </span><span class="s5">0</span><span class="s2">] &lt; </span><span class="s0">ny</span><span class="s2">-</span><span class="s0">margin_y</span><span class="s2">)</span>
+                          <span class="s2">&amp; (</span><span class="s0">candidates</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">] &gt;= </span><span class="s0">margin_x</span><span class="s2">)</span>
+                          <span class="s2">&amp; (</span><span class="s0">candidates</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">] &lt; </span><span class="s0">nx</span><span class="s2">-</span><span class="s0">margin_x</span><span class="s2">)]</span>
+    <span class="s1">if </span><span class="s0">len</span><span class="s2">(</span><span class="s0">interior</span><span class="s2">) &gt; </span><span class="s5">0</span><span class="s2">:</span>
+        <span class="s0">candidates </span><span class="s2">= </span><span class="s0">interior</span>
+
+    <span class="s0">center </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">array</span><span class="s2">([</span><span class="s0">ny</span><span class="s2">/</span><span class="s5">2</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">/</span><span class="s5">2</span><span class="s2">])</span>
+    <span class="s0">row</span><span class="s2">, </span><span class="s0">col </span><span class="s2">= </span><span class="s0">candidates</span><span class="s2">[</span><span class="s0">np</span><span class="s2">.</span><span class="s0">argmin</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">sum</span><span class="s2">((</span><span class="s0">candidates</span><span class="s2">-</span><span class="s0">center</span><span class="s2">)**</span><span class="s5">2</span><span class="s2">, </span><span class="s0">axis</span><span class="s2">=</span><span class="s5">1</span><span class="s2">))]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+    <span class="s0">x </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">)</span>
+    <span class="s0">y </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">)</span>
+    <span class="s1">return </span><span class="s2">(</span><span class="s0">x</span><span class="s2">[</span><span class="s0">col</span><span class="s2">] + </span><span class="s0">x</span><span class="s2">[</span><span class="s0">col</span><span class="s2">+</span><span class="s5">1</span><span class="s2">])/</span><span class="s5">2 </span><span class="s2">+ </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[</span><span class="s0">row</span><span class="s2">]</span>
+
+
+<span class="s0">boundary_point </span><span class="s2">= </span><span class="s0">suggest_boundary_point</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">)</span>
+<span class="s0">delta </span><span class="s2">= </span><span class="s5">1e-3</span>
+<span class="s0">nearby_starts </span><span class="s2">= [</span><span class="s0">boundary_point</span><span class="s2">,</span>
+                 <span class="s0">boundary_point </span><span class="s2">+ </span><span class="s0">delta</span><span class="s2">,</span>
+                 <span class="s0">boundary_point </span><span class="s2">+ </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">delta</span><span class="s2">]</span>
+
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Foreslått grensepunkt:&quot;</span><span class="s2">, </span><span class="s0">boundary_point</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">z0 </span><span class="s1">in </span><span class="s0">nearby_starts</span><span class="s2">:</span>
+    <span class="s0">result </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z0</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">)</span>
+    <span class="s0">found </span><span class="s2">= </span><span class="s0">roots</span><span class="s2">[</span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;root&quot;</span><span class="s2">]] </span><span class="s1">if </span><span class="s0">result</span><span class="s2">[</span><span class="s4">&quot;converged&quot;</span><span class="s2">] </span><span class="s1">else </span><span class="s4">&quot;ikke funnet&quot;</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;z₀=</span><span class="s1">{</span><span class="s0">z0</span><span class="s1">:</span><span class="s4">.8g</span><span class="s1">}</span><span class="s4">: </span><span class="s1">{</span><span class="s0">result</span><span class="s2">[</span><span class="s4">'iterations'</span><span class="s2">]</span><span class="s1">} </span><span class="s4">iterasjoner, &quot;</span>
+          <span class="s4">f&quot;nullpunkt=</span><span class="s1">{</span><span class="s0">found</span><span class="s1">}</span><span class="s4">, stopp=</span><span class="s1">{</span><span class="s0">result</span><span class="s2">[</span><span class="s4">'reason'</span><span class="s2">]</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s6"># Fjern kommentarene for å se iterasjonsforeløpet for startverdienee</span>
+    <span class="s6">#print(&quot;Iterasjonsforeløp&quot;)</span>
+    <span class="s6">#print_trace(result)</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Hvor stor var avstanden mellom de to valgte startverdiene? 
+ 
+Avstanden mellom de to valgte nullpunktene er 0.001 
+ 
+$|z_1-z_2|=\sqrt{(0.013531328-0.012531328)^2+(0.0062656642-0.0062656642)^2}$ 
+ 
+$|z_1-z_2|=\sqrt{0.001^2}=0.001$ 
+ 
+&lt;br&gt; 
+ 
+### 2. Når begynte iterasjonsforløpene å bli tydelig forskjellige? 
+ 
+Rundt iterasjon nr 15 ser vi at det blir en mer tydelig forskjell mellom startverdiene. I punkt 16 ser vi at skrittlengden til det andre punktet (5.625e+00) er større enn det første punktet (2.413e+00). 
+ 
+&lt;br&gt; 
+ 
+### 3. Fant de ulike nullpunkter, eller var forskjellen bare antall iterasjoner? 
+ 
+Begge punktene fant samme nullpunkt, eneste forskjellen er at det første startverdien brukte 1 ekstra iterasjon for å nå nullpunktet, mens den andre startverdien brukte en mindre. Startverdi nr. 1 brukte 27 iterasjoner mens startverdi nr. 2 brukte 26 
+ 
+&lt;br&gt; 
+ 
+### 4. Er samme følsomhet synlig langt inne i et ensfarget område? 
+ 
+Langt inne i et ensfarget område vil små endringer i startverdien føre til samme nullpunkt, så metoden er mindre følsom der. <hr class="ls0">#%% md 
+## Oppgave 7 
+ 
+#### Orginal kode <hr class="ls0">#%% 
+print</span><span class="s2">(</span><span class="s4">&quot;      tol  maxiter  konvergert  nådde grensen  gj.snitt steg&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">tolerance</span><span class="s2">, </span><span class="s0">maximum </span><span class="s1">in </span><span class="s2">[(</span><span class="s5">1e-4</span><span class="s2">, </span><span class="s5">50</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">50</span><span class="s2">),</span>
+                           <span class="s2">(</span><span class="s5">1e-12</span><span class="s2">, </span><span class="s5">50</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">15</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">100</span><span class="s2">)]:</span>
+    <span class="s0">data </span><span class="s2">= </span><span class="s0">newton_grid</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">bounds</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">=</span><span class="s5">250</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s5">250</span><span class="s2">,</span>
+                       <span class="s0">tol</span><span class="s2">=</span><span class="s0">tolerance</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s0">maximum</span><span class="s2">)</span>
+    <span class="s0">summary </span><span class="s2">= </span><span class="s0">summarize_grid</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">tolerance</span><span class="s1">:</span><span class="s4">9.0e</span><span class="s1">}  {</span><span class="s0">maximum</span><span class="s1">:</span><span class="s4">7d</span><span class="s1">}  {</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'converged'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">10d</span><span class="s1">}  </span><span class="s4">&quot;</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'not_converged'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">13d</span><span class="s1">}  </span><span class="s4">&quot;</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'mean_iterations'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">13.2f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### Endret kode <hr class="ls0">#%% 
+print</span><span class="s2">(</span><span class="s4">&quot;      tol  maxiter  konvergert  nådde grensen  gj.snitt steg&quot;</span><span class="s2">)</span>
+<span class="s1">for </span><span class="s0">tolerance</span><span class="s2">, </span><span class="s0">maximum </span><span class="s1">in </span><span class="s2">[(</span><span class="s5">1e-4</span><span class="s2">, </span><span class="s5">50</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">50</span><span class="s2">),</span>
+                           <span class="s2">(</span><span class="s5">1e-12</span><span class="s2">, </span><span class="s5">50</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">50</span><span class="s2">), (</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s5">100</span><span class="s2">)]:</span>
+    <span class="s0">data </span><span class="s2">= </span><span class="s0">newton_grid</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">bounds</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">=</span><span class="s5">250</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s5">250</span><span class="s2">,</span>
+                       <span class="s0">tol</span><span class="s2">=</span><span class="s0">tolerance</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s0">maximum</span><span class="s2">)</span>
+    <span class="s0">summary </span><span class="s2">= </span><span class="s0">summarize_grid</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">tolerance</span><span class="s1">:</span><span class="s4">9.0e</span><span class="s1">}  {</span><span class="s0">maximum</span><span class="s1">:</span><span class="s4">7d</span><span class="s1">}  {</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'converged'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">10d</span><span class="s1">}  </span><span class="s4">&quot;</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'not_converged'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">13d</span><span class="s1">}  </span><span class="s4">&quot;</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'mean_iterations'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">13.2f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### 1. Forklar med konkrete tall hvordan en strengere toleranse og en større maxiter påvirker klassifiseringen. Betyr «nådde maxiter» at den matematiske følgen divergerer? 
+ 
+Med en strengere toleranse vil vi komme nærmere nullpunktet, men da vil det ta lengre tid før punktet blir klassifisert som konvergert. Dette kan resultere i at noen startverdier når `maxiter` før de rekker å oppfylle toleransekravet. 
+ 
+Det at en startverdi har nådd `maxiter` betyr ikke nødvendigvis at den matematiske følgen divergerer, men bare at den ikke kom til et punkt som oppfylte toleransen innenfor antall steg vi hadde satt. Altså kan det være at den bare ikke fikk nok steg. 
+ 
+For eksempel ser vi at med `tol = 1e-4` og `maxiter = 50` bruker metoden i gjennomsnitt `7.32` steg. Gjør vi toleransen strengere til `tol = 1e-8`, øker gjennomsnittet til `8.26` steg, siden metoden trenger flere steg for å nå toleransen vi har satt. 
+ 
+Med `maxiter = 15` klarer metoden å konvergere for `60428` av punktene. Øker vi `maxiter` til `50`, konvergerer alle `62500` punktene. Gjennomsnittlig antall steg øker da fra `7.89` til `8.26`, siden noen av punktene får mulighet til å ta flere steg før de stopper. 
+ 
+### 2. Betyr $|f(z_n)| &lt; 10^{-12}$ nødvendigvis at $|z_n-r| &lt; 10^{-12}$? 
+ 
+Nei det er fordi residualen sier hvor nær funksjonsverdien er 0, mens den andre forteller hvor stor avstanden er mellom itetaratet og det faktiske til nullpunktet. <hr class="ls0">#%% md 
+## Oppgave 8 
+ 
+### Delproblem 1 <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">boundary_mask</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Marker piksler ved en overgang mellom to konvergensområder. 
+ 
+    Vi teller bare overganger mellom punkter som faktisk konvergerte. Punkter 
+    som nådde maxiter eller ga en ugyldig beregning får ikke lage en kunstig 
+    basin-grense. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">boundary </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">zeros</span><span class="s2">(</span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape</span><span class="s2">, </span><span class="s0">dtype</span><span class="s2">=</span><span class="s0">bool</span><span class="s2">)</span>
+
+    <span class="s6"># Sammenlign naboer mot venstre og høyre.</span>
+    <span class="s0">valid_horizontal </span><span class="s2">= (</span><span class="s0">basin</span><span class="s2">[:, :-</span><span class="s5">1</span><span class="s2">] &gt;= </span><span class="s5">0</span><span class="s2">) &amp; (</span><span class="s0">basin</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">:] &gt;= </span><span class="s5">0</span><span class="s2">)</span>
+    <span class="s0">changes_horizontal </span><span class="s2">= </span><span class="s0">valid_horizontal </span><span class="s2">&amp; (</span><span class="s0">basin</span><span class="s2">[:, :-</span><span class="s5">1</span><span class="s2">] != </span><span class="s0">basin</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">:])</span>
+    <span class="s0">boundary</span><span class="s2">[:, :-</span><span class="s5">1</span><span class="s2">] |= </span><span class="s0">changes_horizontal</span>
+    <span class="s0">boundary</span><span class="s2">[:, </span><span class="s5">1</span><span class="s2">:] |= </span><span class="s0">changes_horizontal</span>
+
+    <span class="s6"># Gjør samme sammenligning opp og ned.</span>
+    <span class="s0">valid_vertical </span><span class="s2">= (</span><span class="s0">basin</span><span class="s2">[:-</span><span class="s5">1</span><span class="s2">, :] &gt;= </span><span class="s5">0</span><span class="s2">) &amp; (</span><span class="s0">basin</span><span class="s2">[</span><span class="s5">1</span><span class="s2">:, :] &gt;= </span><span class="s5">0</span><span class="s2">)</span>
+    <span class="s0">changes_vertical </span><span class="s2">= </span><span class="s0">valid_vertical </span><span class="s2">&amp; (</span><span class="s0">basin</span><span class="s2">[:-</span><span class="s5">1</span><span class="s2">, :] != </span><span class="s0">basin</span><span class="s2">[</span><span class="s5">1</span><span class="s2">:, :])</span>
+    <span class="s0">boundary</span><span class="s2">[:-</span><span class="s5">1</span><span class="s2">, :] |= </span><span class="s0">changes_vertical</span>
+    <span class="s0">boundary</span><span class="s2">[</span><span class="s5">1</span><span class="s2">:, :] |= </span><span class="s0">changes_vertical</span>
+    <span class="s1">return </span><span class="s0">boundary</span>
+
+
+<span class="s1">def </span><span class="s0">boundary_summary</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Sammenlign Newton-arbeidet på grensen og inne i basinene.&quot;&quot;&quot;</span>
+    <span class="s0">boundary </span><span class="s2">= </span><span class="s0">boundary_mask</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s0">converged </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">] &gt;= </span><span class="s5">0</span>
+    <span class="s0">interior </span><span class="s2">= </span><span class="s0">converged </span><span class="s2">&amp; ~</span><span class="s0">boundary</span>
+    <span class="s0">iterations </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">]</span>
+
+    <span class="s1">return </span><span class="s2">{</span>
+        <span class="s4">&quot;boundary_fraction&quot;</span><span class="s2">: </span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">boundary</span><span class="s2">)</span>
+                             <span class="s2">/ </span><span class="s0">np</span><span class="s2">.</span><span class="s0">count_nonzero</span><span class="s2">(</span><span class="s0">converged</span><span class="s2">),</span>
+        <span class="s4">&quot;mean_boundary_iterations&quot;</span><span class="s2">: </span><span class="s0">np</span><span class="s2">.</span><span class="s0">mean</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">[</span><span class="s0">boundary</span><span class="s2">]),</span>
+        <span class="s4">&quot;mean_interior_iterations&quot;</span><span class="s2">: </span><span class="s0">np</span><span class="s2">.</span><span class="s0">mean</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">[</span><span class="s0">interior</span><span class="s2">]),</span>
+        <span class="s4">&quot;max_boundary_iterations&quot;</span><span class="s2">: </span><span class="s0">np</span><span class="s2">.</span><span class="s0">max</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">[</span><span class="s0">boundary</span><span class="s2">]),</span>
+        <span class="s4">&quot;visible_basins&quot;</span><span class="s2">: </span><span class="s0">len</span><span class="s2">(</span><span class="s0">np</span><span class="s2">.</span><span class="s0">unique</span><span class="s2">(</span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">][</span><span class="s0">converged</span><span class="s2">])),</span>
+    <span class="s2">}</span>
+
+
+<span class="s1">def </span><span class="s0">print_boundary_summary</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Skriv de samme målene for hvert zoomnivå.&quot;&quot;&quot;</span>
+    <span class="s0">summary </span><span class="s2">= </span><span class="s0">boundary_summary</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+    <span class="s0">pixel_width </span><span class="s2">= (</span><span class="s0">xmax</span><span class="s2">-</span><span class="s0">xmin</span><span class="s2">)/(</span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">].</span><span class="s0">shape</span><span class="s2">[</span><span class="s5">1</span><span class="s2">]-</span><span class="s5">1</span><span class="s2">)</span>
+
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Bredde på vinduet:       &quot;</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">xmax</span><span class="s2">-</span><span class="s0">xmin</span><span class="s1">:</span><span class="s4">.4e</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Bredde per piksel:       &quot;</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">pixel_width</span><span class="s1">:</span><span class="s4">.4e</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Synlige basin:           &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;visible_basins&quot;</span><span class="s2">])</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Andel grensepiksler:     &quot;</span><span class="s2">, </span><span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'boundary_fraction'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.4f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Gj.snitt steg, grense:   &quot;</span><span class="s2">,</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'mean_boundary_iterations'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.2f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Gj.snitt steg, indre:    &quot;</span><span class="s2">,</span>
+          <span class="s4">f&quot;</span><span class="s1">{</span><span class="s0">summary</span><span class="s2">[</span><span class="s4">'mean_interior_iterations'</span><span class="s2">]</span><span class="s1">:</span><span class="s4">.2f</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Største steg, grense:    &quot;</span><span class="s2">, </span><span class="s0">summary</span><span class="s2">[</span><span class="s4">&quot;max_boundary_iterations&quot;</span><span class="s2">])</span><hr class="ls0"><span class="s0">#%% 
+print_boundary_summary</span><span class="s2">(</span><span class="s0">basin_data</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### Hypotese 
+Jeg forventer at grensen etter hvert vil bli glattere dersom jeg zoomer langt nok inn. 
+ 
+Jeg forventer også at indre piksler vil kreve færre iterasjoner enn grensepiksler, siden startverdier nær grensene ofte er mer følsomme og bruker lengre tid på å konvergere. <hr class="ls0">#%% md 
+### Kode brukt for delproblem 2 og 3 
+ 
+#### Orginal Kode <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">square_bounds</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Lag et kvadratisk vindu rundt startverdien vi vil følge.&quot;&quot;&quot;</span>
+    <span class="s0">half </span><span class="s2">= </span><span class="s0">width</span><span class="s2">/</span><span class="s5">2</span>
+    <span class="s1">return </span><span class="s2">(</span><span class="s0">center</span><span class="s2">.</span><span class="s0">real</span><span class="s2">-</span><span class="s0">half</span><span class="s2">, </span><span class="s0">center</span><span class="s2">.</span><span class="s0">real</span><span class="s2">+</span><span class="s0">half</span><span class="s2">,</span>
+            <span class="s0">center</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">-</span><span class="s0">half</span><span class="s2">, </span><span class="s0">center</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">+</span><span class="s0">half</span><span class="s2">)</span>
+
+
+<span class="s1">def </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">, </span><span class="s0">resolution</span><span class="s2">=</span><span class="s5">400</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Beregn og vis ett nytt nivå i fraktalzoomen. 
+ 
+    Behold resolution, tol og maxiter når du sammenligner nivåene. Endre 
+    center og width for å følge grensen videre. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">zoom_bounds </span><span class="s2">= </span><span class="s0">square_bounds</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">)</span>
+    <span class="s0">data </span><span class="s2">= </span><span class="s0">newton_grid</span><span class="s2">(</span>
+        <span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">zoom_bounds</span><span class="s2">,</span>
+        <span class="s0">nx</span><span class="s2">=</span><span class="s0">resolution</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s0">resolution</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s0">tol</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s0">maxiter</span>
+    <span class="s2">)</span>
+    <span class="s0">plot_basins</span><span class="s2">(</span><span class="s0">data</span><span class="s2">, </span><span class="s4">f&quot;Fraktalzoom: bredde=</span><span class="s1">{</span><span class="s0">width</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print_boundary_summary</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s1">return </span><span class="s0">data</span>
+
+
+<span class="s6"># Dette er nivå 1. Endre sentrum hvis grensen forsvinner ut av bildet.</span>
+<span class="s0">zoom_center </span><span class="s2">= </span><span class="s0">boundary_point</span>
+<span class="s0">zoom_width </span><span class="s2">= </span><span class="s0">min</span><span class="s2">(</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">1</span><span class="s2">]-</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">0</span><span class="s2">], </span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">3</span><span class="s2">]-</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">2</span><span class="s2">]) / </span><span class="s5">5</span>
+<span class="s0">zoom_data </span><span class="s2">= </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">zoom_center</span><span class="s2">, </span><span class="s0">zoom_width</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+#### Endret kode 
+_Brukte KI til å  lage en plot_basins2 basert på plot_basins får å fylle opp grafen slik det blir lettere å lese grafen._ <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">square_bounds</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Lag et kvadratisk vindu rundt startverdien vi vil følge.&quot;&quot;&quot;</span>
+    <span class="s0">half </span><span class="s2">= </span><span class="s0">width</span><span class="s2">/</span><span class="s5">2</span>
+    <span class="s1">return </span><span class="s2">(</span><span class="s0">center</span><span class="s2">.</span><span class="s0">real</span><span class="s2">-</span><span class="s0">half</span><span class="s2">, </span><span class="s0">center</span><span class="s2">.</span><span class="s0">real</span><span class="s2">+</span><span class="s0">half</span><span class="s2">,</span>
+            <span class="s0">center</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">-</span><span class="s0">half</span><span class="s2">, </span><span class="s0">center</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">+</span><span class="s0">half</span><span class="s2">)</span>
+
+<span class="s1">def </span><span class="s0">plot_basins2</span><span class="s2">(</span><span class="s0">data</span><span class="s2">, </span><span class="s0">title</span><span class="s2">=</span><span class="s4">&quot;Newtons metode: tiltrekningsområder&quot;</span><span class="s2">,</span>
+                 <span class="s0">critical_points</span><span class="s2">=</span><span class="s1">None</span><span class="s2">, </span><span class="s0">iteration_cap</span><span class="s2">=</span><span class="s5">20</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Samme som plot_basins, men aksene begrenses til selve zoomområdet.&quot;&quot;&quot;</span>
+
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">iterations </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;iterations&quot;</span><span class="s2">]</span>
+    <span class="s0">roots </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;roots&quot;</span><span class="s2">]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+
+    <span class="s6"># Farger for tiltrekningsområdene</span>
+    <span class="s0">basin_image </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">full</span><span class="s2">(</span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape </span><span class="s2">+ (</span><span class="s5">3</span><span class="s2">,), </span><span class="s5">0.25</span><span class="s2">)</span>
+    <span class="s0">basin_image</span><span class="s2">[</span><span class="s0">basin </span><span class="s2">== -</span><span class="s5">2</span><span class="s2">] = </span><span class="s5">0.0</span>
+
+    <span class="s0">legend_handles </span><span class="s2">= []</span>
+
+    <span class="s1">for </span><span class="s0">k </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s0">len</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">)):</span>
+        <span class="s0">mask </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">== </span><span class="s0">k</span>
+        <span class="s0">color </span><span class="s2">= </span><span class="s0">ROOT_COLORS</span><span class="s2">[</span><span class="s0">k </span><span class="s2">% </span><span class="s0">len</span><span class="s2">(</span><span class="s0">ROOT_COLORS</span><span class="s2">)]</span>
+        <span class="s0">basin_image</span><span class="s2">[</span><span class="s0">mask</span><span class="s2">] = </span><span class="s0">color</span>
+        <span class="s0">legend_handles</span><span class="s2">.</span><span class="s0">append</span><span class="s2">(</span>
+            <span class="s0">Patch</span><span class="s2">(</span><span class="s0">facecolor</span><span class="s2">=</span><span class="s0">color</span><span class="s2">, </span><span class="s0">label</span><span class="s2">=</span><span class="s4">f&quot;Mot r</span><span class="s1">{</span><span class="s0">k</span><span class="s2">+</span><span class="s5">1</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+        <span class="s2">)</span>
+
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">close</span><span class="s2">(</span><span class="s4">&quot;all&quot;</span><span class="s2">)</span>
+
+    <span class="s0">fig</span><span class="s2">, (</span><span class="s0">ax_basin</span><span class="s2">, </span><span class="s0">ax_iterations</span><span class="s2">) = </span><span class="s0">plt</span><span class="s2">.</span><span class="s0">subplots</span><span class="s2">(</span>
+        <span class="s5">1</span><span class="s2">, </span><span class="s5">2</span><span class="s2">,</span>
+        <span class="s0">figsize</span><span class="s2">=(</span><span class="s5">13</span><span class="s2">, </span><span class="s5">6</span><span class="s2">),</span>
+        <span class="s0">constrained_layout</span><span class="s2">=</span><span class="s1">True</span>
+    <span class="s2">)</span>
+
+    <span class="s6"># -------------------------</span>
+    <span class="s6"># Venstre: tiltrekningsområder</span>
+    <span class="s6"># -------------------------</span>
+
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">imshow</span><span class="s2">(</span>
+        <span class="s0">basin_image</span><span class="s2">,</span>
+        <span class="s0">origin</span><span class="s2">=</span><span class="s4">&quot;lower&quot;</span><span class="s2">,</span>
+        <span class="s0">extent</span><span class="s2">=(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">),</span>
+        <span class="s0">interpolation</span><span class="s2">=</span><span class="s4">&quot;nearest&quot;</span>
+    <span class="s2">)</span>
+
+    <span class="s6"># Tegn bare nullpunkter som faktisk ligger inne i zoomvinduet</span>
+    <span class="s1">for </span><span class="s0">k</span><span class="s2">, </span><span class="s0">root </span><span class="s1">in </span><span class="s0">enumerate</span><span class="s2">(</span><span class="s0">roots</span><span class="s2">):</span>
+        <span class="s1">if </span><span class="s0">xmin </span><span class="s2">&lt;= </span><span class="s0">root</span><span class="s2">.</span><span class="s0">real </span><span class="s2">&lt;= </span><span class="s0">xmax </span><span class="s1">and </span><span class="s0">ymin </span><span class="s2">&lt;= </span><span class="s0">root</span><span class="s2">.</span><span class="s0">imag </span><span class="s2">&lt;= </span><span class="s0">ymax</span><span class="s2">:</span>
+            <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span>
+                <span class="s0">root</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">root</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">,</span>
+                <span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">,</span>
+                <span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">,</span>
+                <span class="s0">s</span><span class="s2">=</span><span class="s5">70</span><span class="s2">,</span>
+                <span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;o&quot;</span>
+            <span class="s2">)</span>
+
+            <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">annotate</span><span class="s2">(</span>
+                <span class="s4">f&quot;r</span><span class="s1">{</span><span class="s0">k</span><span class="s2">+</span><span class="s5">1</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">,</span>
+                <span class="s2">(</span><span class="s0">root</span><span class="s2">.</span><span class="s0">real</span><span class="s2">, </span><span class="s0">root</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">),</span>
+                <span class="s0">xytext</span><span class="s2">=(</span><span class="s5">7</span><span class="s2">, </span><span class="s5">7</span><span class="s2">),</span>
+                <span class="s0">textcoords</span><span class="s2">=</span><span class="s4">&quot;offset points&quot;</span><span class="s2">,</span>
+                <span class="s0">color</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">,</span>
+                <span class="s0">weight</span><span class="s2">=</span><span class="s4">&quot;bold&quot;</span>
+            <span class="s2">)</span>
+
+    <span class="s1">if </span><span class="s0">critical_points </span><span class="s1">is not None</span><span class="s2">:</span>
+        <span class="s1">for </span><span class="s0">point </span><span class="s1">in </span><span class="s0">critical_points</span><span class="s2">:</span>
+            <span class="s1">if </span><span class="s0">xmin </span><span class="s2">&lt;= </span><span class="s0">point</span><span class="s2">.</span><span class="s0">real </span><span class="s2">&lt;= </span><span class="s0">xmax </span><span class="s1">and </span><span class="s0">ymin </span><span class="s2">&lt;= </span><span class="s0">point</span><span class="s2">.</span><span class="s0">imag </span><span class="s2">&lt;= </span><span class="s0">ymax</span><span class="s2">:</span>
+                <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span>
+                    <span class="s0">point</span><span class="s2">.</span><span class="s0">real</span><span class="s2">,</span>
+                    <span class="s0">point</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">,</span>
+                    <span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">,</span>
+                    <span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">,</span>
+                    <span class="s0">s</span><span class="s2">=</span><span class="s5">70</span><span class="s2">,</span>
+                    <span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;X&quot;</span><span class="s2">,</span>
+                    <span class="s0">linewidths</span><span class="s2">=</span><span class="s5">1.5</span>
+                <span class="s2">)</span>
+
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">set_title</span><span class="s2">(</span><span class="s4">&quot;Funnet nullpunkt&quot;</span><span class="s2">)</span>
+    <span class="s0">ax_basin</span><span class="s2">.</span><span class="s0">legend</span><span class="s2">(</span><span class="s0">handles</span><span class="s2">=</span><span class="s0">legend_handles</span><span class="s2">, </span><span class="s0">loc</span><span class="s2">=</span><span class="s4">&quot;best&quot;</span><span class="s2">)</span>
+
+    <span class="s6"># -------------------------</span>
+    <span class="s6"># Høyre: iterasjoner</span>
+    <span class="s6"># -------------------------</span>
+
+    <span class="s0">converged </span><span class="s2">= </span><span class="s0">basin </span><span class="s2">&gt;= </span><span class="s5">0</span>
+
+    <span class="s0">capped_iterations </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">ma</span><span class="s2">.</span><span class="s0">masked_where</span><span class="s2">(</span>
+        <span class="s2">~</span><span class="s0">converged</span><span class="s2">,</span>
+        <span class="s0">np</span><span class="s2">.</span><span class="s0">minimum</span><span class="s2">(</span><span class="s0">iterations</span><span class="s2">, </span><span class="s0">iteration_cap</span><span class="s2">)</span>
+    <span class="s2">)</span>
+
+    <span class="s0">iteration_image </span><span class="s2">= </span><span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">imshow</span><span class="s2">(</span>
+        <span class="s0">capped_iterations</span><span class="s2">,</span>
+        <span class="s0">origin</span><span class="s2">=</span><span class="s4">&quot;lower&quot;</span><span class="s2">,</span>
+        <span class="s0">extent</span><span class="s2">=(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">),</span>
+        <span class="s0">interpolation</span><span class="s2">=</span><span class="s4">&quot;nearest&quot;</span><span class="s2">,</span>
+        <span class="s0">cmap</span><span class="s2">=</span><span class="s4">&quot;viridis&quot;</span><span class="s2">,</span>
+        <span class="s0">vmin</span><span class="s2">=</span><span class="s5">1</span><span class="s2">,</span>
+        <span class="s0">vmax</span><span class="s2">=</span><span class="s0">iteration_cap</span>
+    <span class="s2">)</span>
+
+    <span class="s6"># Tegn bare nullpunkter som ligger inne i zoomvinduet</span>
+    <span class="s1">for </span><span class="s0">root </span><span class="s1">in </span><span class="s0">roots</span><span class="s2">:</span>
+        <span class="s1">if </span><span class="s0">xmin </span><span class="s2">&lt;= </span><span class="s0">root</span><span class="s2">.</span><span class="s0">real </span><span class="s2">&lt;= </span><span class="s0">xmax </span><span class="s1">and </span><span class="s0">ymin </span><span class="s2">&lt;= </span><span class="s0">root</span><span class="s2">.</span><span class="s0">imag </span><span class="s2">&lt;= </span><span class="s0">ymax</span><span class="s2">:</span>
+            <span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">scatter</span><span class="s2">(</span>
+                <span class="s0">root</span><span class="s2">.</span><span class="s0">real</span><span class="s2">,</span>
+                <span class="s0">root</span><span class="s2">.</span><span class="s0">imag</span><span class="s2">,</span>
+                <span class="s0">c</span><span class="s2">=</span><span class="s4">&quot;white&quot;</span><span class="s2">,</span>
+                <span class="s0">edgecolors</span><span class="s2">=</span><span class="s4">&quot;black&quot;</span><span class="s2">,</span>
+                <span class="s0">s</span><span class="s2">=</span><span class="s5">45</span><span class="s2">,</span>
+                <span class="s0">marker</span><span class="s2">=</span><span class="s4">&quot;o&quot;</span>
+            <span class="s2">)</span>
+
+    <span class="s0">colorbar </span><span class="s2">= </span><span class="s0">fig</span><span class="s2">.</span><span class="s0">colorbar</span><span class="s2">(</span>
+        <span class="s0">iteration_image</span><span class="s2">,</span>
+        <span class="s0">ax</span><span class="s2">=</span><span class="s0">ax_iterations</span><span class="s2">,</span>
+        <span class="s0">shrink</span><span class="s2">=</span><span class="s5">0.82</span>
+    <span class="s2">)</span>
+
+    <span class="s0">colorbar</span><span class="s2">.</span><span class="s0">set_label</span><span class="s2">(</span>
+        <span class="s4">f&quot;Antall iterasjoner (</span><span class="s1">{</span><span class="s0">iteration_cap</span><span class="s1">} </span><span class="s4">= </span><span class="s1">{</span><span class="s0">iteration_cap</span><span class="s1">} </span><span class="s4">eller flere)&quot;</span>
+    <span class="s2">)</span>
+
+    <span class="s0">ax_iterations</span><span class="s2">.</span><span class="s0">set_title</span><span class="s2">(</span>
+        <span class="s4">&quot;Iterasjoner før residualkravet er oppfylt&quot;</span>
+    <span class="s2">)</span>
+
+    <span class="s6"># -------------------------</span>
+    <span class="s6"># Viktig for zoomen</span>
+    <span class="s6"># -------------------------</span>
+
+    <span class="s1">for </span><span class="s0">ax </span><span class="s1">in </span><span class="s2">(</span><span class="s0">ax_basin</span><span class="s2">, </span><span class="s0">ax_iterations</span><span class="s2">):</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_xlabel</span><span class="s2">(</span><span class="s4">&quot;Re(z₀)&quot;</span><span class="s2">)</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_ylabel</span><span class="s2">(</span><span class="s4">&quot;Im(z₀)&quot;</span><span class="s2">)</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_aspect</span><span class="s2">(</span><span class="s4">&quot;equal&quot;</span><span class="s2">)</span>
+
+        <span class="s6"># Vis KUN zoomområdet</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_xlim</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">)</span>
+        <span class="s0">ax</span><span class="s2">.</span><span class="s0">set_ylim</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">)</span>
+
+    <span class="s0">fig</span><span class="s2">.</span><span class="s0">suptitle</span><span class="s2">(</span><span class="s0">title</span><span class="s2">)</span>
+
+    <span class="s0">plt</span><span class="s2">.</span><span class="s0">show</span><span class="s2">()</span>
+
+<span class="s1">def </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">, </span><span class="s0">resolution</span><span class="s2">=</span><span class="s5">400</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">):</span>
+    <span class="s3">&quot;&quot;&quot;Beregn og vis ett nytt nivå i fraktalzoomen. 
+ 
+    Behold resolution, tol og maxiter når du sammenligner nivåene. Endre 
+    center og width for å følge grensen videre. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">zoom_bounds </span><span class="s2">= </span><span class="s0">square_bounds</span><span class="s2">(</span><span class="s0">center</span><span class="s2">, </span><span class="s0">width</span><span class="s2">)</span>
+    <span class="s0">data </span><span class="s2">= </span><span class="s0">newton_grid</span><span class="s2">(</span>
+        <span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">zoom_bounds</span><span class="s2">,</span>
+        <span class="s0">nx</span><span class="s2">=</span><span class="s0">resolution</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">=</span><span class="s0">resolution</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s0">tol</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s0">maxiter</span>
+    <span class="s2">)</span>
+    <span class="s0">plot_basins2</span><span class="s2">(</span><span class="s0">data</span><span class="s2">, </span><span class="s4">f&quot;Fraktalzoom: bredde=</span><span class="s1">{</span><span class="s0">width</span><span class="s1">:</span><span class="s4">.3e</span><span class="s1">}</span><span class="s4">&quot;</span><span class="s2">)</span>
+    <span class="s0">print_boundary_summary</span><span class="s2">(</span><span class="s0">data</span><span class="s2">)</span>
+    <span class="s1">return </span><span class="s0">data</span>
+
+<span class="s6"># Dette er nivå 1. Endre sentrum hvis grensen forsvinner ut av bildet.</span>
+
+<span class="s0">zoom_center </span><span class="s2">= </span><span class="s0">boundary_point</span>
+<span class="s0">zoom_width </span><span class="s2">= </span><span class="s0">min</span><span class="s2">(</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">1</span><span class="s2">]-</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">0</span><span class="s2">], </span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">3</span><span class="s2">]-</span><span class="s0">bounds</span><span class="s2">[</span><span class="s5">2</span><span class="s2">])</span>
+<span class="s0">zoom_data </span><span class="s2">= </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">zoom_center</span><span class="s2">, </span><span class="s0">zoom_width</span><span class="s2">)</span>
+
+<span class="s0">zoom_center </span><span class="s2">= </span><span class="s0">suggest_boundary_point</span><span class="s2">(</span><span class="s0">zoom_data</span><span class="s2">)</span>
+<span class="s0">zoom_width </span><span class="s2">= </span><span class="s0">zoom_width </span><span class="s2">/ </span><span class="s5">10</span>
+<span class="s0">zoom_data </span><span class="s2">= </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">zoom_center</span><span class="s2">, </span><span class="s0">zoom_width</span><span class="s2">)</span>
+
+<span class="s0">zoom_center </span><span class="s2">= </span><span class="s0">suggest_boundary_point</span><span class="s2">(</span><span class="s0">zoom_data</span><span class="s2">)</span>
+<span class="s0">zoom_width </span><span class="s2">= </span><span class="s0">zoom_width </span><span class="s2">/ </span><span class="s5">10</span>
+<span class="s0">zoom_data </span><span class="s2">= </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">zoom_center</span><span class="s2">, </span><span class="s0">zoom_width</span><span class="s2">)</span>
+
+<span class="s0">zoom_center </span><span class="s2">= </span><span class="s0">suggest_boundary_point</span><span class="s2">(</span><span class="s0">zoom_data</span><span class="s2">)</span>
+<span class="s0">zoom_width </span><span class="s2">= </span><span class="s0">zoom_width </span><span class="s2">/ </span><span class="s5">10</span>
+<span class="s0">zoom_data </span><span class="s2">= </span><span class="s0">run_zoom</span><span class="s2">(</span><span class="s0">zoom_center</span><span class="s2">, </span><span class="s0">zoom_width</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+### Delproblem 4 
+_Funksjon `find_neighbor_points` ble laget ved hjelp av KI for å få to gode startverdier å bruke_ <hr class="ls0">#%% 
+</span><span class="s1">def </span><span class="s0">find_neighbor_points</span><span class="s2">(</span><span class="s0">data</span><span class="s2">):</span>
+    <span class="s0">basin </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;basin&quot;</span><span class="s2">]</span>
+    <span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax </span><span class="s2">= </span><span class="s0">data</span><span class="s2">[</span><span class="s4">&quot;bounds&quot;</span><span class="s2">]</span>
+
+    <span class="s0">ny</span><span class="s2">, </span><span class="s0">nx </span><span class="s2">= </span><span class="s0">basin</span><span class="s2">.</span><span class="s0">shape</span>
+    <span class="s0">x </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">xmin</span><span class="s2">, </span><span class="s0">xmax</span><span class="s2">, </span><span class="s0">nx</span><span class="s2">)</span>
+    <span class="s0">y </span><span class="s2">= </span><span class="s0">np</span><span class="s2">.</span><span class="s0">linspace</span><span class="s2">(</span><span class="s0">ymin</span><span class="s2">, </span><span class="s0">ymax</span><span class="s2">, </span><span class="s0">ny</span><span class="s2">)</span>
+
+    <span class="s1">for </span><span class="s0">row </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s0">ny</span><span class="s2">):</span>
+        <span class="s1">for </span><span class="s0">col </span><span class="s1">in </span><span class="s0">range</span><span class="s2">(</span><span class="s0">nx </span><span class="s2">- </span><span class="s5">1</span><span class="s2">):</span>
+            <span class="s1">if </span><span class="s0">basin</span><span class="s2">[</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col</span><span class="s2">] &gt;= </span><span class="s5">0 </span><span class="s1">and </span><span class="s0">basin</span><span class="s2">[</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">] &gt;= </span><span class="s5">0</span><span class="s2">:</span>
+                <span class="s1">if </span><span class="s0">basin</span><span class="s2">[</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col</span><span class="s2">] != </span><span class="s0">basin</span><span class="s2">[</span><span class="s0">row</span><span class="s2">, </span><span class="s0">col </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">]:</span>
+                    <span class="s0">z1 </span><span class="s2">= </span><span class="s0">x</span><span class="s2">[</span><span class="s0">col</span><span class="s2">] + </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[</span><span class="s0">row</span><span class="s2">]</span>
+                    <span class="s0">z2 </span><span class="s2">= </span><span class="s0">x</span><span class="s2">[</span><span class="s0">col </span><span class="s2">+ </span><span class="s5">1</span><span class="s2">] + </span><span class="s5">1j</span><span class="s2">*</span><span class="s0">y</span><span class="s2">[</span><span class="s0">row</span><span class="s2">]</span>
+                    <span class="s1">return </span><span class="s0">z1</span><span class="s2">, </span><span class="s0">z2</span>
+
+<span class="s0">z1</span><span class="s2">, </span><span class="s0">z2 </span><span class="s2">= </span><span class="s0">find_neighbor_points</span><span class="s2">(</span><span class="s0">zoom_data</span><span class="s2">)</span>
+
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Nabopunkt 1:&quot;</span><span class="s2">, </span><span class="s0">z1</span><span class="s2">)</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Nabopunkt 2:&quot;</span><span class="s2">, </span><span class="s0">z2</span><span class="s2">)</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Avstand:&quot;</span><span class="s2">, </span><span class="s0">abs</span><span class="s2">(</span><span class="s0">z1 </span><span class="s2">- </span><span class="s0">z2</span><span class="s2">))</span>
+
+<span class="s0">z3 </span><span class="s2">= </span><span class="s5">0.024 </span><span class="s2">+ </span><span class="s5">0.002j</span>
+<span class="s0">print</span><span class="s2">(</span><span class="s4">&quot;Startverdi i ensfarget område:&quot;</span><span class="s2">, </span><span class="s0">z3</span><span class="s2">)</span>
+
+<span class="s0">res1 </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z1</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">)</span>
+<span class="s0">res2 </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z2</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">)</span>
+<span class="s0">res3 </span><span class="s2">= </span><span class="s0">newton_trace</span><span class="s2">(</span><span class="s0">f</span><span class="s2">, </span><span class="s0">df</span><span class="s2">, </span><span class="s0">roots</span><span class="s2">, </span><span class="s0">z3</span><span class="s2">, </span><span class="s0">tol</span><span class="s2">=</span><span class="s5">1e-8</span><span class="s2">, </span><span class="s0">maxiter</span><span class="s2">=</span><span class="s5">100</span><span class="s2">)</span>
+
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">res1</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">res2</span><span class="s2">)</span>
+<span class="s0">print_trace</span><span class="s2">(</span><span class="s0">res3</span><span class="s2">)</span><hr class="ls0"><span class="s0">#%% md 
+#### Valgte nabostartverider med forskjellige basin-farge 
+ 
+For å undersøke følsomheten nær basin-grensen valgte jeg to nabostartverdier med forskjellig basin-farge: 
+ 
+$$ 
+z_1 = 0.0222493734 - 0.0019360902i 
+$$ 
+ 
+$$ 
+z_2 = 0.0222619048 - 0.0019360902i 
+$$ 
+ 
+Avstanden mellom startverdiene er 
+ 
+$$ 
+|z_1-z_2| \approx 1.2531 \cdot 10^{-5}. 
+$$ 
+ 
+#### En startverdi et stykke inne i et ensfarget området 
+Denne startverdien er funnet ved å lese av plottet 
+$$ 
+z_3 = 0.024 + 0.002j 
+$$ <hr class="ls0">#%% md 
+### Sammenligning av de tre startverdiene 
+ 
+De to nabostartverdiene $z_1$ og $z_2$ har en avstand på 
+ 
+$$ 
+1.2531 \cdot 10^{-5} 
+$$ 
+ 
+De første iteratene er nesten like, men etter hvert begynner det å bli et skille. Til slutt så ser vi at de ender til ved forskjellige nullpunkter. 
+ 
+For $z_1$ var den største skrittlengden 3.718 ved n = 18. Punktet konvergerte etter 30 iterasjoner, med siste residual 
+ 
+$$ 
+7.793 \cdot 10^{-16}. 
+$$ 
+ 
+For $z_2$ var den største skrittlengden 4.860 ved n = 18. Punktet konvergerte etter 33 iterasjoner, med siste residual 
+ 
+$$ 
+1.361 \cdot 10^{-16}. 
+$$ 
+ 
+Det tredje punktet, som ligger inne i et ensfarget område, hadde den største skrittlengde 2.870 ved n = 3 og konvergerte etter 22 iterasjoner. Siste residual var 
+ 
+$$ 
+3.742 \cdot 10^{-12}. 
+$$ 
+ 
+`newton_trace` viser at to startverdier som ligger svært nær hverandre ved med ulik basin farge kan følge nesten samme iterasjonsforeløp i starten, men senere vil de skille lag og konvergere mot forskjellige nullpunkter. Punktet inne i det ensfargede området konvergerte raskere og hadde og forløpet var mer stabilt. <hr class="ls0">#%% md 
+## Fraktal rapport 
+**Hva forventet du før du zoomet, og hva viste bildene?** 
+Jeg forvnetet at grensen etter hvert vil bli glattere dersom jeg zoomer langt nok inn. Jeg forvnetet også at indre piksler vil kreve færre iterasjoner enn grensepiksler, siden startverdier nær grensene ofte er mer følsomme og bruker lengre tid på å konvergere. 
+ 
+&lt;br&gt; 
+ 
+**Hvilke nye detaljer dukket opp på hvert nivå? Ble grensen noen gang en enkel, glatt linje?** 
+Det mer jeg zoomet inn, så oppdaget jeg flere små detaljere langs grensene. Grensene ble ikke glattere slik jeg forventet, men istedet så dukket det opp flere mindr eområder med forskjellige basin farger langs grensene. 
+ 
+Jeg ser også, ut ifra iterasjonsplottet, at punktene nær grenesene generelt krever flere iterasjoner for å oppfylle residualkravet. Punkter som ligger i ensfargede områder krever mindre. 
+ 
+&lt;br&gt; 
+ 
+**Så du nøyaktige kopier av tidligere mønstre, eller nye mønstre med lignende kompleksitet? Hvorfor kan begge deler omtales som fraktallignende?** 
+ 
+Jeg ser ikke nøyaktige mønstre, men det dukker opp nye mønstre som ligner veldig på tildigere mønstre. 
+ 
+Begge deler kan omtales som fraktallignende, da det kommer fram nye detaljer når vi zoomer inn. 
+ 
+&lt;br&gt; 
+ 
+**Hvor liten endring i $𝑧_0$ representerte én piksel på siste nivå?** 
+ 
+På siste nivå representere en piksel en endring på  omtrent 
+ 
+$$ 
+1.2531 * 10^{-5} 
+$$ 
+ 
+&lt;br&gt; 
+ 
+**Fortsatte nabopiksler å finne forskjellige nullpunkter på denne skalaen?** 
+ 
+Ja på dette nivået så fortsatte nabopiksler å finne forskjellige nullpunkter. $z_1$ og $z_2$ som har en avstand på $1.2531 * 10^{-5}$ endte opp med å finne to forskjellige nullpunkter. 
+ 
+&lt;br&gt; 
+ 
+**Hvordan skilte iterasjonstallene på grensen seg fra indre områder?** 
+ 
+Grensepikslene krevde flere iterasjoner enn piksler som ligger i indre område. På siste nivå var gjennomsnittlig iterasjoner for grensepiksler 30.65, mens for indre piskler lå den på 22.03. 
+ 
+&lt;br&gt; 
+ 
+**Hva viste de tre newton_trace-forsøkene om hvorfor fargene blir ulike?** 
+ 
+ 
+De tre forsøkene viser at de to nabostartverdiene følger nesten samme bane i starten. Rundt iterasjon 13 til 18 begynner banene å skille, og til slutt så konvergerer de to mot forskjellige nullpunkter. $z_3$ som lå i et ensfarget område konvergerte bedre og brukte færre iterasjoner. Dette viser at små forskjeller i startverdien nær en basin-grense kan gi helt forskjellige resultater, mens et punkt inne i et tiltrekningsområde oppfører seg mer stabilt 
+ 
+&lt;br&gt; 
+ 
+**Hvordan kan tol, maxiter og flyttallsregning påvirke de minste strukturene du ser?** 
+ 
+En strengere `tol` gjør at Newtons metode må komme nærmere et nullpunkt før punktet regnes som konvergert, og kan derfor kreve flere iterasjoner. Hvis `maxiter` er for lav, kan enkelte punkter stoppe før de rekker å oppfylle residualkravet. 
+ 
+&lt;br&gt; 
+ 
+**Hvorfor er flere vellykkede zoomnivåer god numerisk evidens for en fraktallignende grense, men ikke et bevis på detaljer på alle skalaer?** 
+ 
+Flere zoomnivåer viser at nye detaljer fortsetter å dukke opp selv når vi undersøker stadig mindre områder. Dette er god numerisk evidens for at grensen er fraktallignende. 
+ 
+Det er likevel ikke et matematisk bevis, fordi vi bare har undersøkt et begrenset antall zoomnivåer med et endelig antall piksler og begrenset flyttallspresisjon. Vi kan derfor ikke konkludere med at nye detaljer fortsetter på alle mulige skalaer. <hr class="ls0">#%% md 
+### Konklusjon 
+</span></pre>
+</body>
+</html>
